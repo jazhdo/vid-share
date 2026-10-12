@@ -1,0 +1,60 @@
+<style>
+.result {
+    display: flex;
+    flex-direction: column;
+}
+.result:hover {
+
+}
+.result:active {
+
+}
+.top {
+    display: flex;
+    flex-direction: column;
+}
+.author {
+    display: flex;
+    flex-direction: row;
+}
+.pfp {
+    border-radius: 100px;
+    height: 35px;
+    width: 35px;
+}
+.bottom {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+</style>
+<h1 th:text="Search Results for ${search.query}">Search Results for </h1>
+<div id="results">
+    <!-- Repeat this for each result -->
+    <div class="result" th:each="result : ${results}" th:attr="data-link=*{link}">
+        <div class="top">
+            <h2 th:text="*{title}">Video Title</h2>
+            <p th:text="*{description}">Video Description</p>
+            <div class="author">
+                <div class="pfp">
+                    <img th:src="@{*{pfp}}">
+                </div>
+                <p th:text="*{author}">John Doe</p>
+            </div>
+        </div>
+        <div class="bottom">
+            <!-- Left -->
+            <p th:text="'Views: *{views} | Likes: *{likes} | Comments: *{comments}'">Views: 1M | Likes: 100k | Comments: 100k</p>
+            
+            <!-- Right -->
+            <p th:text="Date: *{date}">Date: MM/DD/YYYY</p>
+        </div>
+    </div>
+</div>
+<script>
+    document.querySelectorAll(".result").forEach(element => {
+        element.addEventListener("click", () => {
+            window.location.href = element.getAttribute("data-link");
+        });
+    });
+</script>

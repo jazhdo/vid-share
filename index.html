@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head xmlns:th="http://www.thymeleaf.org">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${page.name} - Vid Share">Home - Vid Share</title>
+    <style>
+html {
+    height: 100%;
+    width: 100%;
+}
+body {
+    margin: 0px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    background-color: hsl(0, 0%, 86%);
+    align-items: center;
+    padding: 10px 10px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --header-border: solid hsl(0, 0%, 50%) 2px;
+}
+header h1 {
+    margin: 0px;
+    margin-left: 10px;
+    font-weight: 500;
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+header a {
+    height: 35px;
+    width: 70px;
+    color: black;
+    text-decoration: none;
+    background-color: hsl(0, 0%, 94%);
+    border-radius: 100px;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    font-size: 16px;
+    border: var(--header-border);
+    font-weight: 400;
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+#search {
+    height: 35px;
+    width: 400px;
+    border: var(--header-border);
+    border-radius: 100px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+}
+#search input {
+    border: none;
+    border-radius: 100px;
+    padding-left: 10px;
+    font-size: 16px;
+    display: flex;
+    flex: 1;
+}
+#search input:placeholder-shown {
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+#search input:focus {
+    outline: none;
+}
+#search:has(input:focus) {
+    border-color: hsl(206, 100%, 50%);
+}
+#search button {
+    width: 60px;
+    height: 30px;
+    border-radius: 100px;
+    margin-left: 10px;
+    margin-right: 2.5px;
+    font-weight: 510;
+    font-size: 14px;
+    border: var(--header-border);
+    background-color: hsl(0, 0%, 94%);
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+/* TODO: Change this to :active for mobile */
+#search button:hover {
+    background-color: hsl(0, 0%, 86%);
+    cursor: pointer;
+}
+#search button:active {
+    background-color: hsl(0, 0%, 78%);
+}
+#profile {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    border-radius: 100px;
+    overflow: hidden;
+    border: solid hsla(0, 0%, 70%) 4px;
+}
+#profile:hover {
+    cursor: pointer;
+}
+#profile img {
+    width: 50px;
+    height: 50px;
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+
+#main {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+}
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Vid Share</h1>
+        <a href="/">Home</a>
+        <div id="search">
+            <input placeholder="Type to search.." type="text">
+            <button>Search</button>
+        </div>
+        <!-- <a href="/make">Make</a> -->
+        <div id="profile">
+            <img src="./cat.png" th:src="${profile.img}">
+        </div>
+    </header>
+    <div id="main" th:utext="${page.content}">
+        <h1>Home</h1>
+        <style>
+#main {
+    display: flex;
+    flex-direction: column;
+    margin: 20px;
+}
+.vid {
+    width: 500px;
+    height: 550px;
+    background-color: hsl(0, 0%, 78%);
+    border-radius: 20px;
+    margin: 30px;
+    display: flex;
+    flex-direction: column;
+    justify-items: center;
+    align-items: center;
+}
+.vid .vid-img {
+    width: 450px;
+    height: 350px;
+    background-color: hsl(0, 0%, 63%);
+    padding: 10px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+.vid .vid-img p {
+    margin: 0px;
+    padding: 5px;
+}
+.vid .vid-desc {
+    width: 450px;
+    height: fit-content;
+    background-color: hsl(0, 0%, 55%);
+    border-radius: 10px;
+    margin-top: 20px;
+    padding-left: 10px;
+}
+.vid .vid-desc p {
+    margin: 0px;
+}
+        </style>
+        <div class="vid">
+            <div class="vid-img">
+                <p>I failed.</p>
+                <p>Within this <a href="https://github.com/jazhdo/VidShare">repo</a> contains a in progress, almost working video sharing platform.</p>
+                <p>This page design would be the homepage with many videos sorted based on views, except the features haven't yet worked.</p>
+                <p>The entire thing will be debugged next week.</p>
+                <p>Please read the <a href="/README.md">README</a> for design information.</p>
+                <p>With this, is my overambitious MVP.</p>
+                <p>Please don't mark off hours as those were hard spent working hours to write and design the backend and webpage. (It took me this long because I'm new to this whole spring boot thing)</p>
+                <p>Thank you for reading this.</p>
+                <p>- Jazhdo</p>
+            </div>
+            <div class="vid-desc">
+                <h2>My confession</h2>
+                <p>By Jazhdo</p>
+                <p>Uploaded October 11th, 2026</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        // const profile = document.getElementById("profile");
+        // profile.addEventListener("click", () => alert("This is a MVP (Minimal Viable Project or smth). Spent too much time on backend and planning, no time to make UI. Profiles coming next week!"));
+    </script>
+</body>
+</html>
