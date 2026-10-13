@@ -1,10 +1,23 @@
 <style>
+#header {
+    margin: 0px;
+}
+.results {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
 .result {
     display: flex;
     flex-direction: column;
+    padding: 10px;
+    border-radius: 20px;
+    height: fit-content;
+    width: 600px;
+    background-color: hsl(0, 0%, 80%);
 }
 .result:hover {
-
+    cursor: pointer;
 }
 .result:active {
 
@@ -28,26 +41,26 @@
     justify-content: space-between;
 }
 </style>
-<h1 th:text="Search Results for ${search.query}">Search Results for </h1>
+<h1 id="header" th:text="|Search Results for '${search.query}'|">Search Results for </h1>
 <div id="results">
     <!-- Repeat this for each result -->
-    <div class="result" th:each="result : ${results}" th:attr="data-link=*{link}">
+    <div class="result" th:each="result : ${results}" th:object="${result}" th:data-link="*{link}">
         <div class="top">
             <h2 th:text="*{title}">Video Title</h2>
             <p th:text="*{description}">Video Description</p>
             <div class="author">
                 <div class="pfp">
-                    <img th:src="@{*{pfp}}">
+                    <img th:src="*{pfp}">
                 </div>
                 <p th:text="*{author}">John Doe</p>
             </div>
         </div>
         <div class="bottom">
             <!-- Left -->
-            <p th:text="'Views: *{views} | Likes: *{likes} | Comments: *{comments}'">Views: 1M | Likes: 100k | Comments: 100k</p>
+            <p th:text="|Views: *{views} - Likes: *{likes} - Comments: *{comments}|">Views: 1M | Likes: 100k | Comments: 100k</p>
             
             <!-- Right -->
-            <p th:text="Date: *{date}">Date: MM/DD/YYYY</p>
+            <p th:text="|Date: *{date}|">Date: MM/DD/YYYY</p>
         </div>
     </div>
 </div>

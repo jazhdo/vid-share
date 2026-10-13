@@ -3,7 +3,7 @@
 <head xmlns:th="http://www.thymeleaf.org">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${page.name} - Vid Share"></title>
+    <title th:text="|${page.name()} - Vid Share|"></title>
     <style>
 html {
     height: 100%;
@@ -31,6 +31,7 @@ header h1 {
     margin: 0px;
     margin-left: 10px;
     font-weight: 500;
+    font-size: 32px;
     user-select: none;
     -ms-user-select: none;
     -moz-user-select: none;
@@ -130,8 +131,9 @@ header a {
 
 #main {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex: 1;
+    padding: 40px;
 }
     </style>
 </head>
@@ -139,17 +141,18 @@ header a {
     <header>
         <h1>Vid Share</h1>
         <a href="/">Home</a>
-        <div id="search">
-            <input placeholder="Type to search.." type="text">
-            <button>Search</button>
-        </div>
+        <form id="search" action="search" method="get">
+            <input placeholder="Type to search.." type="text" name="q" required>
+            <button type="submit">Search</button>
+        </form>
         <!-- <a href="/make">Make</a> -->
         <div id="profile">
-            <img src="./test.jpg" th:src="${profile.img}">
+            <img th:src="${pfp}">
         </div>
     </header>
-    <div id="main" th:utext="${page.content}"></div>
+    <div id="main" th:utext="${page.content()}"></div>
     <script>
+        // Profile menu
         const profile = document.getElementById("profile");
         profile.addEventListener("click", () => alert("This is a MVP (Minimal Viable Project or smth). Spent too much time on backend and planning, no time to make UI. Profiles coming next week!"));
     </script>

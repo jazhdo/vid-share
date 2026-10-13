@@ -1,1 +1,49 @@
+<style>
+.videos {
+    display: flex;
+    flex-direction: column;
+}
+.video {
+    background-color: hsl(0, 0%, 70%);
+    border-radius: 20px;
+    height: fit-content;
+    width: fit-content;
+    padding: 20px;
+}
+.image {
+    border-radius: 20px;
+    overflow: hidden;
+}
+.lower {
+    margin-top: 30px;
+}
+.title {
+    margin: 0px;
+}
+.description {
+    margin: 0px;
+}
+.date {
+    margin: 0px;
+}
+</style>
 <h1>Home</h1>
+<div id="videos">
+    <div class="video" th:each="video : ${videos}" th:object="${video}" th:data-link="*{link}">
+        <div class="image">
+            <img th:src="|*{thumbnail}|">
+        </div>
+        <div class="lower">
+            <h2 class="title" th:text="*{title}"></h2>
+            <p class="description" th:text="*{description}">Description here</p>
+            <p class="date" th:text="*{date}"></p>
+        </div>
+    </div>
+    <script>
+        const videos = document.querySelectorAll(".video");
+        videos.forEach(video => video.addEventListener("click", () => redirect(video.getAttribute("data-link"))));
+        function redirect(link) {
+            window.location.href = window.location.protocol + "//" + window.location.host + link;
+        }
+    </script>
+</div>
