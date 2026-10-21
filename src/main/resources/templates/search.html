@@ -45,6 +45,7 @@
 <div id="results">
     <!-- Repeat this for each result -->
     <div class="result" th:each="result : ${results}" th:object="${result}" th:data-link="*{link}">
+        <img th:src="|${result.thumbnail}|">
         <div class="top">
             <h2 th:text="*{title}">Video Title</h2>
             <p th:text="*{description}">Video Description</p>

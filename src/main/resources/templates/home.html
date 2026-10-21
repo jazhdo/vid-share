@@ -1,7 +1,10 @@
 <style>
-.videos {
-    display: flex;
-    flex-direction: column;
+#videos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 520px);
+    grid-template-rows: auto;
+    gap: 20px;
+    justify-content: space-around;
 }
 .video {
     background-color: hsl(0, 0%, 70%);
@@ -29,8 +32,8 @@
 </style>
 <h1>Home</h1>
 <div id="videos">
-    <div class="video" th:each="video : ${videos}" th:object="${video}" th:data-link="*{link}">
-        <div class="image">
+    <div class="video" th:each="video : ${videos}" th:object="${video}">
+        <div class="image" th:data-link="*{link}">
             <img th:src="|*{thumbnail}|">
         </div>
         <div class="lower">
@@ -40,7 +43,7 @@
         </div>
     </div>
     <script>
-        const videos = document.querySelectorAll(".video");
+        const videos = document.querySelectorAll(".video .image");
         videos.forEach(video => video.addEventListener("click", () => redirect(video.getAttribute("data-link"))));
         function redirect(link) {
             window.location.href = window.location.protocol + "//" + window.location.host + link;

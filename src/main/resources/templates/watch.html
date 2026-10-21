@@ -1,1 +1,21 @@
-<video controls th:src="|/api/video/${id}|" type="video/mp4"></video>
+<style>
+
+</style>
+<div>
+    <div>
+        <video id="video" th:src="|/api/video/show/${id}|" type="video/mp4" autoplay></video>
+    </div>
+    <div>
+        <button id="play" onclick="videoElement.play();"></button>
+        <input id="pos" type="range">
+        <p id="time">10:00 / 10:00</p>
+        <input id="volume" type="range">
+    </div>
+</div>
+<script>
+const /** @type {HTMLVideoElement} */ videoElement = document.getElementById("video");
+function play() {
+    if (videoElement.paused) videoElement.play();
+    else videoElement.pause();
+}
+</script>
