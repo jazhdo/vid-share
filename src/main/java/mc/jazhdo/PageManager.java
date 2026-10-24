@@ -46,9 +46,6 @@ public class PageManager {
 
     // Helper functions for page paths
 
-    private boolean checkHost(HttpServletRequest request) {
-        return global.checkHost(request);
-    }
     private String uppercaseFirst(String input) {
         return input.substring(0, 1).toUpperCase() + input.substring(1);
     }
@@ -77,9 +74,6 @@ public class PageManager {
 
     // Paths
     @GetMapping(path = "/", produces = "text/html")
-    public String getSlash(Model model, HttpServletRequest request) {
-        return checkHost(request) ? getHome(model, request) : getErrorPage(421, model);
-    }
     public String getHome(Model model, HttpServletRequest request) {
         Context context = new Context();
         try (PreparedStatement ps = global.getDB().prepareStatement("SELECT * FROM videos ORDER BY rowid DESC LIMIT 50")) {
@@ -95,38 +89,36 @@ public class PageManager {
     public record HomepageVideo(String thumbnail, String title, String description, String date, String link) {}
     @GetMapping(path = "/{page}", produces = "text/html")
     public String getNormalPage(@PathVariable String page, Model model, HttpServletRequest request) {
-        if (checkHost(request)) {
-            return switch (page) {
-                case "home" -> getHome(model, request);
-                case "search" -> {
-                    String query = request.getParameter("q");
-                    if (query != null) {
-                        List<SearchResult> searchResults = new ArrayList<>();
-                        try (PreparedStatement ps = global.getDB().prepareStatement("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.pfp, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")) {
-                            ps.setString(1, query);
-                            ResultSet results = ps.executeQuery();
-                            while (results.next()) searchResults.add(new SearchResult("/watch?v=" + results.getString("id"), results.getString("thumbnail"), results.getString("title"), results.getString("description"), results.getBytes("pfp"), results.getString("displayname"), results.getInt("views"), results.getInt("likes"), 0, DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG).format(new Date(results.getLong("timestamp")))));
-                        } catch (SQLException e) {
-                            log.warn("Search Error: {}", e.getMessage());
-                            yield getErrorPage(500, model);
-                        }
-                        Context context = new Context();
-                        context.setVariable("results", searchResults);
-                        context.setVariable("search", new SearchData(query, searchResults.isEmpty()));
-                        yield getPage("search", model, context);
-                    } else yield getErrorPage(400, model);
-                }
-                case "make" -> getPage(page, model);
-                case "watch" -> {
+        return switch (page) {
+            case "home" -> getHome(model, request);
+            case "search" -> {
+                String query = request.getParameter("q");
+                if (query != null) {
+                    List<SearchResult> searchResults = new ArrayList<>();
+                    try (PreparedStatement ps = global.getDB().prepareStatement("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.pfp, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")) {
+                        ps.setString(1, query);
+                        ResultSet results = ps.executeQuery();
+                        while (results.next()) searchResults.add(new SearchResult("/watch?v=" + results.getString("id"), results.getString("thumbnail"), results.getString("title"), results.getString("description"), results.getBytes("pfp"), results.getString("displayname"), results.getInt("views"), results.getInt("likes"), 0, DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG).format(new Date(results.getLong("timestamp")))));
+                    } catch (SQLException e) {
+                        log.warn("Search Error: {}", e.getMessage());
+                        yield getErrorPage(500, model);
+                    }
                     Context context = new Context();
-                    String videoID = request.getParameter("v");
-                    log.info("VID ID: {}", videoID);
-                    context.setVariable("id", videoID);
-                    yield getPage("watch", model, context);
-                }
-                default -> getErrorPage(404, model);
-            };
-        } else return getErrorPage(421, model);
+                    context.setVariable("results", searchResults);
+                    context.setVariable("search", new SearchData(query, searchResults.isEmpty()));
+                    yield getPage("search", model, context);
+                } else yield getErrorPage(400, model);
+            }
+            case "make", "login", "signup" -> getPage(page, model);
+            case "watch" -> {
+                Context context = new Context();
+                String videoID = request.getParameter("v");
+                log.info("VID ID: {}", videoID);
+                context.setVariable("id", videoID);
+                yield getPage("watch", model, context);
+            }
+            default -> getErrorPage(404, model);
+        };
     }
     public record SearchResult(String link, String thumbnail, String title, String description, byte[] pfp, String author, int views, int likes, int comments, String date) {};
     public record SearchData(String query, boolean empty) {};
@@ -134,20 +126,20 @@ public class PageManager {
     // Resource pages
     @GetMapping(path = "/js/{page}", produces = "text/javascript")
     @ResponseBody 
-    public ResponseEntity<String> getJs(@PathVariable String path) {
-        return getRawFile(path + ".js");
+    public ResponseEntity<String> getJs(@PathVariable String page) {
+        return getRawFile(page + ".js", "text/javascript");
     }
     @GetMapping(path = "/css/{page}", produces = "text/css")
     @ResponseBody 
-    public ResponseEntity<String> getCss(@PathVariable String path) {
-        return getRawFile(path + ".css");
+    public ResponseEntity<String> getCss(@PathVariable String page) {
+        return getRawFile(page + ".css", "text/css");
     }
-    private ResponseEntity<String> getRawFile(String fileName) {
+    private ResponseEntity<String> getRawFile(String fileName, String contentType) {
         String fileContents = getFileContents(fileName);
         return switch (fileContents) {
             case "404" -> ResponseEntity.status(404).contentType(MediaType.APPLICATION_JSON).body("{\"status\":\"404\",\"message\":\"The wanted file was not found.\"}");
             case "500" -> ResponseEntity.status(500).contentType(MediaType.APPLICATION_JSON).body("{\"status\":\"500\",\"message\":\"There was an problem loading the file.\"}");
-            default -> ResponseEntity.ok().body(fileContents);
+            default -> ResponseEntity.ok().contentType(MediaType.valueOf(contentType)).body(fileContents);
         };
     }
     private String getFileContents(String fileName) {
