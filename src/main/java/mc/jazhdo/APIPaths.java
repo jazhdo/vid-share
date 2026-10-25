@@ -44,12 +44,14 @@ import mc.jazhdo.PageManager.HomepageVideo;
 @RequestMapping("/api")
 @Controller 
 public class APIPaths {
+    private final PageManager pageManager;
     private final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
     private final Global global;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    public APIPaths(Global global) {
+    public APIPaths(Global global, PageManager pageManager) {
         this.global = global;
+        this.pageManager = pageManager;
     }
 
     // Internal APIs
@@ -87,8 +89,13 @@ public class APIPaths {
             if (result.next()) {
                 String id = result.getString("id");
                 if (encoder.matches(authRequest.password(), result.getString("password"))) {
-                    response.addCookie(new Cookie("auth", Jwts.builder().subject(id).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact()));
-                    response.addCookie(new Cookie("uid", id));
+                    Cookie tokenCookie = new Cookie("token", Jwts.builder().subject(id).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact());
+                    tokenCookie.setHttpOnly(true);
+                    tokenCookie.setPath("/");
+                    response.addCookie(tokenCookie);
+                    Cookie UIDCookie = new Cookie("uid", id);
+                    UIDCookie.setPath("/");
+                    response.addCookie(UIDCookie);
                     return ResponseEntity.ok().build();
                 } else return res(HttpStatus.UNAUTHORIZED);
             } else return res(HttpStatus.NOT_FOUND);
@@ -113,9 +120,13 @@ public class APIPaths {
             int rows = ps.executeUpdate();
             if (rows == 0) return res(HttpStatus.UNAUTHORIZED);
             else {
-                response.addCookie(new Cookie("auth", Jwts.builder().subject(uid).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact()));
-                response.addCookie(new Cookie("uid", uid));
-                return ResponseEntity.ok().build();
+                Cookie tokenCookie = new Cookie("token", Jwts.builder().subject(uid).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact());
+                tokenCookie.setHttpOnly(true);
+                response.addCookie(tokenCookie);
+                Cookie UIDCookie = new Cookie("uid", uid);
+                UIDCookie.setPath("/");
+                response.addCookie(UIDCookie);
+            return ResponseEntity.ok().build();
             }
         } catch (SQLException e) {
             return res(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -124,15 +135,27 @@ public class APIPaths {
     public record SignupRequest(String username, String password) {}
 
     // Profile pic endpoints
-    @GetMapping(path = "/pfp/{userid}", produces = "image/webp")
+    @GetMapping(path = "/pfp/{userid}", produces = "image/*")
     @ResponseBody
-    public ResponseEntity<byte[]> getProfilePic(@PathVariable String userid, HttpServletRequest request) {
+    public ResponseEntity<byte[]> getProfilePic(@PathVariable String userid) {
         try (PreparedStatement ps = global.getDB().prepareStatement("SELECT pfp FROM users WHERE id = ?")) {
             ps.setString(1, userid);
             ResultSet result = ps.executeQuery();
-            if (result.next()) return ResponseEntity.ok().body(result.getBytes("pfp"));
-            else return res(404);
+            if (result.next()) {
+                byte[] pfpBytes = result.getBytes("pfp");
+                if (pfpBytes == null) return getDefaultProfilePic();
+                else return ResponseEntity.ok().body(pfpBytes);
+            } else return getDefaultProfilePic();
         } catch (SQLException e) {
+            return getDefaultProfilePic();
+        }
+    }
+    @GetMapping(path = "/default-pfp", produces = "image/*")
+    @ResponseBody 
+    public ResponseEntity<byte[]> getDefaultProfilePic() {
+        try {
+            return ResponseEntity.ok().body(Files.readAllBytes(global.root.resolve("cat.png")));
+        } catch (IOException ex) {
             return res(500);
         }
     }
@@ -144,6 +167,7 @@ public class APIPaths {
             try {
                 pfp = ImmutableImage.loader().fromStream(request.getInputStream()).bytes(WebpWriter.MAX_LOSSLESS_COMPRESSION);
             } catch (IOException e) {
+                e.printStackTrace();
                 return res(500);
             }
 
@@ -154,14 +178,33 @@ public class APIPaths {
                 if (ps.executeUpdate() == 0) return res(500);
                 return ResponseEntity.ok().build();
             } catch (SQLException e) {
+                e.printStackTrace();
                 return res(500);
             }
         } else return res(401);
     }
 
+    // Set Bio & Display Name endpoints
+    @PostMapping(path = "/bio-display/{userid}")
+    public ResponseEntity<Void> setBioAndDisplay(@PathVariable String userid, @RequestBody BioAndDisplay bioAndDisplay, HttpServletRequest request) {
+        if (global.checkAuth(request, userid)) {
+            try (PreparedStatement ps = global.getDB().prepareStatement("UPDATE users SET bio = ?, displayname = ? WHERE id = ?")) {
+                ps.setString(1, bioAndDisplay.bio());
+                ps.setString(2, bioAndDisplay.display());
+                ps.setString(3, userid);
+                int affected = ps.executeUpdate();
+                if (affected == 0) return res(HttpStatus.INTERNAL_SERVER_ERROR);
+                else return ResponseEntity.ok().build();
+            } catch (SQLException ex) {
+                return res(HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+        } else return res(HttpStatus.UNAUTHORIZED);
+    }
+    public record BioAndDisplay(String bio, String display) {}
+
     // Video endpoints
     @GetMapping(path = "/video/show/{video}", produces = "video/mp4")
-    public ResponseEntity<byte[]> getVideo(@PathVariable String video, HttpServletRequest request) {
+    public ResponseEntity<byte[]> getVideo(@PathVariable String video) {
         try (PreparedStatement ps = global.getDB().prepareStatement("SELECT * FROM videos WHERE id = ?")) {
             ps.setString(1, video);
             ResultSet result = ps.executeQuery();

@@ -1,1 +1,285 @@
+<style>
+h1 {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 34px;
+    font-weight: 500;
+}
+#content {
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+    background-color: hsl(0, 0%, 70%);
+    border-radius: 30px;
+    padding: 20px;
+    width: fit-content;
+    padding-right: 130px;
+}
+#upper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background-color: hsl(0, 0%, 80%);
+    border-radius: 20px;
+    margin-bottom: 30px;
+    padding: 15px;
+    width: 370px;
+}
+#pfp {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 100px;
+    height: 100px;
+    width: 100px;
+    overflow: hidden;
+    border: 7px solid hsl(0, 0%, 70%);
+    position: relative;
+
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+#pfp:hover {
+    cursor: pointer;
+}
+#pfp img {
+    height: 100px;
+    width: 100px;
+}
+#pfp span {
+    position: absolute;
+    background-color: hsla(0, 0%, 0%, 40%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    font-weight: 300;
+    bottom: 0px;
+    left: 0px;
+    width: 100%;
+    height: 43px;
+    text-align: center;
+    color: white;
+    padding-bottom: 6px;
+    transition: opacity 0.1s;
+    opacity: 0;
+}
+#pfp:hover span {
+    opacity: 1;
+}
+#names {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-left: 15px;
+    height: 100%;
+}
+#names input {
+    margin-bottom: 18px;
+
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+}
+#names p {
+    margin: 0px;
+
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+}
+#content h2 {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 30px;
+    font-weight: 500;
+
+    margin: 0px;
+    margin-bottom: 5px;
+}
+#content textarea {
+    field-sizing: content;
+    width: 600px;
+    min-height: 100px;
+    resize: none;
+
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+}
+
+#saved-status {
+    font-family: system-ui;
+    margin-left: 5px;
+    font-size: 19px;
+    font-weight: 450;
+}
+
+#save-button {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 20px;
+    font-weight: 500;
+
+    border: 2px solid hsl(0, 0%, 10%);
+    background-color: hsl(0, 0%, 94%);
+    border-radius: 100px;
+    width: 340px;
+    padding: 12px;
+
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+#save-button:hover {
+    cursor: pointer;
+    background-color: hsl(0, 0%, 91%);
+}
+
+/* PFP upload menu */
+#upload-pfp-background {
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    left: 0px;
+    top: 0px;
+    position: absolute;
+    background-color: hsla(0, 0%, 0%, 50%);
+}
+#upload-pfp {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: hsl(0, 0%, 85%);
+    border-radius: 70px;
+    padding: 20px;
+}
+#upload-pfp h2 {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 32px;
+    font-weight: 500;
+    margin-top: 5px;
+    margin-bottom: 30px;
+}
+#upload-pfp label {
+    display: flex;
+    flex-direction: column;
+    border-radius: 54px;
+    background-color: hsl(0, 0%, 77%);
+    border: 1px solid black;
+    width: 500px;
+    height: 500px;
+    padding: 25px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 22px;
+    font-weight: 400;
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+#upload-pfp label:hover {
+    cursor: pointer;
+    background-color: hsl(0, 0%, 74%);
+}
+#upload-pfp label input {
+    display: none;
+}
+</style>
 <h1>Profile</h1>
+<div id="content">
+    <div id="upper">
+        <div id="pfp" th:data-uid="${uid}">
+            <img th:src="|/api/${pfp}|">
+            <span>Click to change</span>
+        </div>
+        <div id="names">
+            <input th:value="${display}" th:data-original-display="${display}" maxlength="50" required>
+            <p th:text="${username}">@Jazhdo</p>
+        </div>
+    </div>
+    <h2>Bio</h2>
+    <textarea th:text="${bio}" maxlength="250" required></textarea>
+    <p id="saved-status"></p>
+    <button id="save-button" onclick="save();">Save Bio & Display Name</button>
+</div>
+<div id="upload-pfp-background" style="display: none;">
+    <div id="upload-pfp">
+        <h2>Upload New Profile Pic</h2>
+        <label>
+            Click to upload..
+            <input type="file" accept="image/*" required>
+        </label>
+    </div>
+</div>
+<script>
+const PFPElement = document.getElementById("pfp"), PFPImgElement = PFPElement.querySelector("img"), uploadPFPBackgroundElement = document.getElementById("upload-pfp-background"),
+uploadPFPElement = document.getElementById("upload-pfp"), /** @type {HTMLInputElement} */ uploadPFPInputElement = document.querySelector("#upload-pfp label input");
+
+PFPElement.onclick = () => {
+    uploadPFPBackgroundElement.style.display = "flex";
+}
+uploadPFPBackgroundElement.onclick = () => {
+    uploadPFPBackgroundElement.style.display = "none";
+}
+uploadPFPElement.onclick = (event) => {
+    event.stopPropagation();
+}
+uploadPFPInputElement.onchange = async () => {
+    uploadPFPBackgroundElement.style.display = "none";
+    console.log("Uploading PFP: " + uploadPFPInputElement.value.substring(12));
+    const file = uploadPFPInputElement.files[0], bytes = await file.bytes();
+    PFPImgElement.setAttribute("src", "data:" + file.type + ";base64," + bytes.toBase64());
+    await fetch("/api/pfp/" + PFPElement.getAttribute("data-uid"), {
+        method: "POST",
+        headers: {
+            "Content-Type": "image/" + uploadPFPInputElement.files
+        },
+        body: bytes
+    });
+}
+
+// Other savings
+const displayNameInput = document.querySelector("#names input"), savedStatusElement = document.getElementById("saved-status"),
+bioInput = document.querySelector("#content textarea");
+let savedTimeout = null;
+
+async function save() {
+    if (savedTimeout != null) clearTimeout(savedTimeout);
+    savedStatusElement.style.color = "green";
+    savedStatusElement.textContent = "Saving...";
+
+    const newDisplayName = displayNameInput.value, newBio = bioInput.value;
+    if (newDisplayName === displayNameInput.getAttribute("data-original-display") && newBio === bioInput.textContent) {
+        savedStatusElement.textContent = "Saved.";
+        savedTimeout = setTimeout(() => {
+            savedStatusElement.textContent = "";
+        }, 10000);
+        return;
+    }
+
+    const res = await fetch("/api/bio-display/" + PFPElement.getAttribute("data-uid"), {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            bio: newBio,
+            display: newDisplayName
+        })
+    });
+
+    if (res.ok) {
+        savedStatusElement.textContent = "Saved.";
+        savedTimeout = setTimeout(() => savedStatusElement.textContent = "", 10000);
+    } else {
+        savedStatusElement.style.color = "red";
+        savedStatusElement.textContent = "Error saving. Please try again.";
+        savedTimeout = setTimeout(() => savedStatusElement.textContent = "", 10000);
+    }
+}
+</script>

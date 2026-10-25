@@ -26,6 +26,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 
 @SuppressWarnings("CallToPrintStackTrace")
@@ -34,7 +35,7 @@ public class Global {
     private final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
     private final ApplicationContext applicationContext;
     public Path root, dbPath, videoPath;
-    private String defaultProfilePic;
+    public String defaultProfilePic;
     public Connection database;
     public SecretKey jwtKey;
 
@@ -50,7 +51,7 @@ public class Global {
         // Get secure env values
         root = Paths.get("");
         Dotenv envValues = Dotenv.configure().directory(root.toAbsolutePath().toString()).filename(".local.env").load();
-        defaultProfilePic = envValues.get("PFP");
+        defaultProfilePic = envValues.get("DEFAULT_PFP");
         
         // Get JWT key for use in login
         String stringjwtkey = envValues.get("JWT_KEY");
@@ -112,21 +113,44 @@ public class Global {
     }
 
     // Auth tools
-    public boolean checkAuth(HttpServletRequest request, String userID) {
+    public String getCookieValue(String key, Cookie[] cookies) {        
+        if (cookies == null) return null;
+        for (Cookie cookie : cookies) if (cookie.getName().equals(key)) return cookie.getValue();
+        return null;
+    }
+    public boolean checkAuth(HttpServletRequest request) {
         // Check for the existence of the header
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) return false;
-        
+        Cookie[] cookies = request.getCookies();
+        String UID = getCookieValue("uid", cookies), token = getCookieValue("token", cookies);
+        if (UID == null || token == null) return false;
+
         // Get token payload
         Claims payload;
         try {
-            payload = Jwts.parser().verifyWith(jwtKey).build().parseSignedClaims(authHeader.substring(7)).getPayload();
+            payload = Jwts.parser().verifyWith(jwtKey).build().parseSignedClaims(token).getPayload();
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
 
         // Check that the token is for this user and return true for right auth
-        return payload.getSubject().equals(userID);
+        return payload.getSubject().equals(UID);
+    }
+    public boolean checkAuth(HttpServletRequest request, String verifyUID) {
+        // Check for the existence of the header
+        Cookie[] cookies = request.getCookies();
+        String UID = getCookieValue("uid", cookies), token = getCookieValue("token", cookies);
+        if (UID == null || token == null) return false;
+
+        // Get token payload
+        Claims payload;
+        try {
+            payload = Jwts.parser().verifyWith(jwtKey).build().parseSignedClaims(token).getPayload();
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+
+        // Check that the token is for this user and return true for right auth
+        return verifyUID.equals(UID) && payload.getSubject().equals(UID);
     }
 
     public Connection getDB() throws SQLException {

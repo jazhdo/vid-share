@@ -21,11 +21,17 @@ form.addEventListener("submit", async (/** @type {SubmitEvent} */ event) => {
         else if (res.status === 404) return showError("Incorrect username.");
         else if (res.status === 500) return showError("An internal server error occurred. Please try again in a few minutes.");
     } else {
-        if (res.status === 401) return showError("That username is already taken. Please try another.");
-        else if (res.status === 500) return showError("An internal server error occurred. Please try again in a few minutes.");
+        if (res.status === 401 || res.status === 500) return showError("That username is already taken. Please try another.");
     }
 
     // TODO: Here, redirect to the profile page and load that stuff
+    document.getElementById("window").querySelectorAll("button").forEach(element => element.onclick = () => {});
+    form.querySelectorAll("input").forEach(element => element.disabled = true);
+    error.style.color = "green";
+    error.textContent = "Successful " + (login ? "sign in" : "sign up") + ". Redirecting...";
+    error.style.display = "block";
+    
+    window.location.href = new URLSearchParams(window.location.search).get("redirect") || "/profile";
 });
 
 let login = true, displayedError = null;
@@ -43,9 +49,19 @@ function switchMethod(switcherElement) {
     }
 }
 
-function showPassword() {
-    if (passwordInput.type === "password") passwordInput.type = "text";
-    else passwordInput.type = "password";
+/**
+ * Shows/Hides the password
+ * 
+ * @param {HTMLButtonElement} buttonElement The button element that was clicked
+ */
+function showPassword(buttonElement) {
+    if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        buttonElement.textContent = "Hide";
+    } else {
+        passwordInput.type = "password";
+        buttonElement.textContent = "Show";
+    }
 }
 
 /**

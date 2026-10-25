@@ -145,16 +145,11 @@ header a {
             <input placeholder="Type to search.." type="text" name="q" required>
             <button type="submit">Search</button>
         </form>
-        <!-- <a href="/make">Make</a> -->
-        <div id="profile">
-            <img th:src="${pfp}">
+        <a href="/make">Make</a>
+        <div id="profile" onclick="window.location.href = '/profile';">
+            <img th:src="|/api/${profilePicture}|" th:data-src="|/${profilePicture}|">
         </div>
     </header>
     <div id="main" th:utext="${page.content()}"></div>
-    <script>
-        // Profile menu
-        const profile = document.getElementById("profile");
-        profile.addEventListener("click", () => alert("This is a MVP (Minimal Viable Project or smth). Spent too much time on backend and planning, no time to make UI. Profiles coming next week!"));
-    </script>
 </body>
 </html>

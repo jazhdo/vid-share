@@ -56,7 +56,6 @@ public class PageManager {
         String fileContents = templateEngine.process(pageName + ".html", pageContent);
         Page page = new Page(uppercaseFirst(pageName), fileContents);
         model.addAttribute("page", page);
-        model.addAttribute("pfp", defaultProfilePic);
         return "main";
     }
     public record Page(String name, String content) {};
@@ -71,15 +70,23 @@ public class PageManager {
         });
         return getPage("error", model, context);
     }
+    private String formatTimestamp(long timestamp) {
+        return DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG).format(new Date(timestamp));
+    }
 
     // Paths
     @GetMapping(path = "/", produces = "text/html")
     public String getHome(Model model, HttpServletRequest request) {
+        // Profile pic logic
+        String uid = global.getCookieValue("uid", request.getCookies());
+        log.info("Request UID: {}", uid);
+        model.addAttribute("profilePicture", uid != null ? ("pfp/" + uid) : "default-pfp");
+
         Context context = new Context();
         try (PreparedStatement ps = global.getDB().prepareStatement("SELECT * FROM videos ORDER BY rowid DESC LIMIT 50")) {
             ResultSet result = ps.executeQuery();
             List<HomepageVideo> videos = new ArrayList<>();
-            while (result.next()) videos.add(new HomepageVideo(result.getString("thumbnail"), result.getString("title"), result.getString("description"), "Uploaded " + DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG).format(new Date(result.getLong("timestamp"))), "/watch?v=" + result.getString("id")));
+            while (result.next()) videos.add(new HomepageVideo(result.getString("thumbnail"), result.getString("title"), result.getString("description"), "Uploaded " + formatTimestamp(result.getLong("timestamp")), "/watch?v=" + result.getString("id")));
             context.setVariable("videos", videos);
         } catch (SQLException e) {
             return getErrorPage(500, model);
@@ -89,8 +96,12 @@ public class PageManager {
     public record HomepageVideo(String thumbnail, String title, String description, String date, String link) {}
     @GetMapping(path = "/{page}", produces = "text/html")
     public String getNormalPage(@PathVariable String page, Model model, HttpServletRequest request) {
+        // Profile pic logic
+        String uid = global.getCookieValue("uid", request.getCookies());
+        log.info("Request UID: {}", uid);
+        model.addAttribute("profilePicture", uid != null ? ("pfp/" + uid) : "default-pfp");
+
         return switch (page) {
-            case "home" -> getHome(model, request);
             case "search" -> {
                 String query = request.getParameter("q");
                 if (query != null) {
@@ -98,7 +109,7 @@ public class PageManager {
                     try (PreparedStatement ps = global.getDB().prepareStatement("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.pfp, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")) {
                         ps.setString(1, query);
                         ResultSet results = ps.executeQuery();
-                        while (results.next()) searchResults.add(new SearchResult("/watch?v=" + results.getString("id"), results.getString("thumbnail"), results.getString("title"), results.getString("description"), results.getBytes("pfp"), results.getString("displayname"), results.getInt("views"), results.getInt("likes"), 0, DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG).format(new Date(results.getLong("timestamp")))));
+                        while (results.next()) searchResults.add(new SearchResult("/watch?v=" + results.getString("id"), results.getString("thumbnail"), results.getString("title"), results.getString("description"), results.getBytes("pfp"), results.getString("displayname"), results.getInt("views"), results.getInt("likes"), 0, formatTimestamp(results.getLong("timestamp"))));
                     } catch (SQLException e) {
                         log.warn("Search Error: {}", e.getMessage());
                         yield getErrorPage(500, model);
@@ -109,13 +120,41 @@ public class PageManager {
                     yield getPage("search", model, context);
                 } else yield getErrorPage(400, model);
             }
-            case "make", "login", "signup" -> getPage(page, model);
+            case "make", "login" -> getPage(page, model);
             case "watch" -> {
                 Context context = new Context();
                 String videoID = request.getParameter("v");
                 log.info("VID ID: {}", videoID);
                 context.setVariable("id", videoID);
                 yield getPage("watch", model, context);
+            }
+            case "profile" -> {
+                if (global.checkAuth(request)) {
+                    Context context = new Context();
+                    context.setVariable("pfp", uid == null ? "default-pfp" : "pfp/" + uid);
+
+                    // Get user info
+                    String displayName = "Error", username = "Error", bio = "Error fetching bio";
+                    long timestamp = System.currentTimeMillis();
+                    try (PreparedStatement ps = global.getDB().prepareStatement("SELECT username, displayname, bio, timestamp FROM users WHERE id = ?")) {
+                        ps.setString(1, uid);
+                        ResultSet result = ps.executeQuery();
+                        if (result.next()) {
+                            displayName = result.getString("displayname");
+                            username = result.getString("username");
+                            bio = result.getString("bio");
+                            timestamp = result.getLong("timestamp");
+                        }
+                    } catch (SQLException ex) {
+                        
+                    }
+                    context.setVariable("display", displayName);
+                    context.setVariable("username", "@" + username);
+                    context.setVariable("bio", bio);
+                    context.setVariable("timestamp", formatTimestamp(timestamp));
+                    context.setVariable("uid", uid);
+                    yield getPage("profile", model, context);
+                } else yield getPage("login", model);
             }
             default -> getErrorPage(404, model);
         };
