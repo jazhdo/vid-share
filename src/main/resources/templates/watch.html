@@ -48,7 +48,7 @@
 }
 </style>
 <div id="video-view">
-    <video id="video" th:src="|/api/video/show/${id}|" type="video/mp4" autoplay></video>
+    <video id="video" th:src="|/api/video/show/${id}|" type="video/*" autoplay></video>
     <div id="controls">
         <button id="play" onclick="play();">
             <!-- SVG icons sourced from https://www.svgrepo.com/collection/minimal-ui-icons/27 -->
@@ -75,8 +75,8 @@
                 </g>
             </svg>
         </button>
-        <input id="pos" type="range">
-        <p id="time">10:00 / 10:00</p>
+        <!-- <input id="pos" type="range"> -->
+        <!-- <p id="time">10:00 / 10:00</p> -->
         <div id="volume">
             <button onclick="openVolume();">🔇</button>
             <input type="range" style="display: none;">

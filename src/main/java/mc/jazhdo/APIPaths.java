@@ -2,7 +2,7 @@ package mc.jazhdo;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -203,14 +203,14 @@ public class APIPaths {
     public record BioAndDisplay(String bio, String display) {}
 
     // Video endpoints
-    @GetMapping(path = "/video/show/{video}", produces = "video/mp4")
+    @GetMapping(path = "/video/show/{video}", produces = "video/*")
     public ResponseEntity<byte[]> getVideo(@PathVariable String video) {
         try (PreparedStatement ps = global.getDB().prepareStatement("SELECT * FROM videos WHERE id = ?")) {
             ps.setString(1, video);
             ResultSet result = ps.executeQuery();
             if (result.next()) {
                 try {
-                    return ResponseEntity.ok().body(Files.readAllBytes(global.videoPath.resolve(video + ".mp4")));
+                    return ResponseEntity.ok().body(Files.readAllBytes(global.videoPath.resolve(video)));
                 } catch (IOException e) {
                     return ResponseEntity.status(500).build();
                 }
@@ -230,34 +230,34 @@ public class APIPaths {
             return res(500);
         }
     }
-    @PostMapping(path = "/video/new", produces = "application/json")
-    public ResponseEntity<String> uploadVideo(@RequestParam MultipartFile file, @RequestParam MultipartFile thumbnail, @RequestParam String uid, @RequestParam String title, @RequestParam String description, HttpServletRequest request) {
-        if (global.checkAuth(request, uid)) {
-            if (file == null || file.isEmpty() || thumbnail == null || thumbnail.isEmpty()) return ResponseEntity.status(400).body("empty");
-            String contentType = file.getContentType();
-            if (contentType == null || !"video/mp4".equals(contentType)) return ResponseEntity.status(400).body("type");
+    @PostMapping(path = "/video/new", produces = "text/plain")
+    public ResponseEntity<String> uploadVideo(@RequestParam  MultipartFile file, @RequestParam MultipartFile thumbnail, @RequestParam String title, @RequestParam String description, HttpServletRequest request) {
+        if (global.checkAuth(request)) {
+            // if (file == null || file.isEmpty() || thumbnail == null || thumbnail.isEmpty() || title == null || title.isEmpty() || description == null || description.isEmpty()) return ResponseEntity.status(400).body("empty");
 
             // Copy video into place
             String id = generateV7().toString();
             try {
-                Files.copy(file.getInputStream(), global.videoPath.resolve(id + ".mp4"), StandardCopyOption.REPLACE_EXISTING);
-            } catch (IOException e) {
+                file.transferTo(global.videoPath.resolve(id));
+            } catch (IOException | IllegalStateException e) {
+                e.printStackTrace();
                 return ResponseEntity.status(500).body(id);
             }
 
-            // Convert thumbnail into a data URI
-            String thumbnailData;
+            // Get thumbnail
+            String thumbnailString;
             try {
-                thumbnailData = "data:" + thumbnail.getContentType() + ";base64," + Base64.getEncoder().encodeToString(thumbnail.getBytes());
-            } catch (IOException e) {
+                thumbnailString = "data:" + thumbnail.getContentType() + ";base64," + Base64.getEncoder().encodeToString(thumbnail.getBytes());
+            } catch (IOException ex) {
+                ex.printStackTrace();
                 return ResponseEntity.status(500).body(id);
             }
 
             // Update database
-            try (PreparedStatement ps = global.getDB().prepareStatement("INSERT INTO videos (id, uid, thumbnail, title, description, views, likes, comments, shares) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+            try (PreparedStatement ps = global.getDB().prepareStatement("INSERT INTO videos (id, uid, thumbnail, title, description, views, likes, comments, shares) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
                 ps.setString(1, id);
-                ps.setString(2, uid);
-                ps.setString(3, thumbnailData);
+                ps.setString(2, global.getCookieValue("uid", request.getCookies()));
+                ps.setString(3, thumbnailString);
                 ps.setString(4, title);
                 ps.setString(5, description);
                 ps.setInt(6, 0);
@@ -267,10 +267,12 @@ public class APIPaths {
                 if (ps.executeUpdate() == 0) return ResponseEntity.status(500).body(id);
                 else return ResponseEntity.ok().body(id);
             } catch (SQLException e) {
+                e.printStackTrace();
                 return ResponseEntity.status(500).body(id);
             }
         } else return res(401);
     }
+    public record VideoUpload(String fileMime, String file, String thumbnailMime, String thumbnail, String title, String description) {}
 
     // // View endpoint
     // @PostMapping(path = "/api/views/{video}")

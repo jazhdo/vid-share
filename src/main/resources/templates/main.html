@@ -147,7 +147,7 @@ header a {
         </form>
         <a href="/make">Make</a>
         <div id="profile" onclick="window.location.href = '/profile';">
-            <img th:src="|/api/${profilePicture}|" th:data-src="|/${profilePicture}|">
+            <img th:src="|/api/${profilePicture}|">
         </div>
     </header>
     <div id="main" th:utext="${page.content()}"></div>
