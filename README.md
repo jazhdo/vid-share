@@ -29,3 +29,10 @@ This is a website for sharing videos. Just that, no ads, no payments, no whateve
 
 ### Image conversion (for profile pictures)
 > Scrimage webp conversion (an external dependency)
+
+## Supported sizes
+> Width: Minimum of 800px
+> Height: Minimum of 700px
+
+## Tested devices
+> Firefox 158.0 Build #20261007201254 on macOS 15.7.3

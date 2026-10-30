@@ -2,7 +2,6 @@ package mc.jazhdo;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -44,14 +43,12 @@ import mc.jazhdo.PageManager.HomepageVideo;
 @RequestMapping("/api")
 @Controller 
 public class APIPaths {
-    private final PageManager pageManager;
     private final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
     private final Global global;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    public APIPaths(Global global, PageManager pageManager) {
+    public APIPaths(Global global) {
         this.global = global;
-        this.pageManager = pageManager;
     }
 
     // Internal APIs
