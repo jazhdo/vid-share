@@ -50,7 +50,7 @@ public class Global {
 
         // Get secure env values
         root = Paths.get("");
-        Dotenv envValues = Dotenv.configure().directory(root.toAbsolutePath().toString()).filename(".local.env").load();
+        Dotenv envValues = Dotenv.configure().directory("/etc/secrets/").filename(".local.env").load();
         defaultProfilePic = envValues.get("DEFAULT_PFP");
         
         // Get JWT key for use in login
