@@ -6,6 +6,6 @@ COPY . /
 
 RUN sh mvnw clean package
 
-EXPOSE 8080
+EXPOSE 443
 
 CMD ["java", "-jar", "target/VidShare-0.1.0.jar"]
