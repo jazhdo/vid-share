@@ -21,7 +21,6 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import io.github.cdimascio.dotenv.Dotenv;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -50,11 +49,10 @@ public class Global {
 
         // Get secure env values
         root = Paths.get("");
-        Dotenv envValues = Dotenv.configure().directory("/etc/secrets/").filename(".local.env").load();
-        defaultProfilePic = envValues.get("DEFAULT_PFP");
+        defaultProfilePic = System.getenv("DEFAULT_PFP");
         
         // Get JWT key for use in login
-        String stringjwtkey = envValues.get("JWT_KEY");
+        String stringjwtkey = System.getenv("JWT_KEY");
         if (stringjwtkey == null) {
             log.error("Invalid JWT key in .local.env file. This application will break without this.");
             SpringApplication.exit(applicationContext, () -> 404);
