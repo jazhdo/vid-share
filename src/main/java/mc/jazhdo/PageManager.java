@@ -36,7 +36,6 @@ public class PageManager {
     private final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
     private final TemplateEngine templateEngine;
     private final Global global;
-    private String defaultProfilePic;
 
     public PageManager(Global global, ResourceLoader resourceLoader, TemplateEngine templateEngine) {
         this.global = global;
