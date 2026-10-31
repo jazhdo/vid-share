@@ -30,8 +30,9 @@ public class SecurityConfig {
     }
 
     public boolean checkHost(HttpServletRequest request) {
-        String remoteHost = request.getRemoteHost();
-        log.info("{} request recieved from {} to {}.", new Object[]{request.getMethod(), remoteHost, request.getRequestURI()});
-        return "video.itsjaz.com".equals(remoteHost) || "127.0.0.1".equals(remoteHost) || "0:0:0:0:0:0:0:1".equals(remoteHost);
+        return true;
+        // String remoteHost = request.getRemoteHost();
+        // log.info("{} request recieved from {} to {}.", new Object[]{request.getMethod(), remoteHost, request.getRequestURI()});
+        // return "video.itsjaz.com".equals(remoteHost) || "127.0.0.1".equals(remoteHost) || "0:0:0:0:0:0:0:1".equals(remoteHost);
     }
 }
