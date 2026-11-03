@@ -37,6 +37,9 @@ This is a website for sharing videos. Just that, no ads, no payments, no whateve
 ## Tested devices
 > Firefox 158.0 Build #20261007201254 on macOS 15.7.3
 
+## Note
+ONLY WORKS ON FIREFOX!!
+
 ## Links (because a reviewer wanted to see them here)
 1. [Link 1](https://video.itsjaz.com) (Works probably)
 2. [Link 2](https://vid-share-new.onrender.com) (Always works)
