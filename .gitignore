@@ -35,7 +35,3 @@ build/
 # Secure files
 .local.env
 .env
-.*.
-
-# Production folder (very bad, ik, its the last hour)
-prod/

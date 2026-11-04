@@ -43,8 +43,7 @@ public class PageManager {
         this.templateEngine = templateEngine;
     }
 
-    // Helper functions for page paths
-
+    // Helper functions
     private String uppercaseFirst(String input) {
         return input.substring(0, 1).toUpperCase() + input.substring(1);
     }
@@ -77,17 +76,18 @@ public class PageManager {
     @GetMapping(path = "/", produces = "text/html")
     public String getHome(Model model, HttpServletRequest request) {
         // Profile pic logic
-        String uid = global.getCookieValue("uid", request.getCookies());
+        String uid = Global.getCookieValue("uid", request.getCookies());
         log.info("Request UID: {}", uid);
-        model.addAttribute("profilePicture", uid != null ? ("pfp/" + uid) : "default-pfp");
+        model.addAttribute("profilePicture", uid != null ? ("user/" + uid) : "default");
 
         Context context = new Context();
-        try (PreparedStatement ps = global.getDB().prepareStatement("SELECT * FROM videos ORDER BY rowid DESC LIMIT 50")) {
+        try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT * FROM videos ORDER BY rowid DESC LIMIT 50")) {
             ResultSet result = ps.executeQuery();
             List<HomepageVideo> videos = new ArrayList<>();
             while (result.next()) videos.add(new HomepageVideo(result.getString("thumbnail"), result.getString("title"), result.getString("description"), "Uploaded " + formatTimestamp(result.getLong("timestamp")), "/watch?v=" + result.getString("id")));
             context.setVariable("videos", videos);
-        } catch (SQLException e) {
+        } catch (SQLException ex) {
+            ex.printStackTrace();
             return getErrorPage(500, model);
         }
         return getPage("home", model, context);
@@ -96,21 +96,22 @@ public class PageManager {
     @GetMapping(path = "/{page}", produces = "text/html")
     public String getNormalPage(@PathVariable String page, Model model, HttpServletRequest request) {
         // Profile pic logic
-        String uid = global.getCookieValue("uid", request.getCookies());
+        String uid = Global.getCookieValue("uid", request.getCookies());
         log.info("Request UID: {}", uid);
-        model.addAttribute("profilePicture", uid != null ? ("pfp/" + uid) : "default-pfp");
+        model.addAttribute("profilePicture", uid != null ? ("user/" + uid) : "default");
 
         return switch (page) {
             case "search" -> {
                 String query = request.getParameter("q");
                 if (query != null) {
                     List<SearchResult> searchResults = new ArrayList<>();
-                    try (PreparedStatement ps = global.getDB().prepareStatement("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.pfp, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")) {
+                    try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.pfp, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")) {
                         ps.setString(1, query);
                         ResultSet results = ps.executeQuery();
                         while (results.next()) searchResults.add(new SearchResult("/watch?v=" + results.getString("id"), results.getString("thumbnail"), results.getString("title"), results.getString("description"), results.getBytes("pfp"), results.getString("displayname"), results.getInt("views"), results.getInt("likes"), 0, formatTimestamp(results.getLong("timestamp"))));
-                    } catch (SQLException e) {
-                        log.warn("Search Error: {}", e.getMessage());
+                    } catch (SQLException ex) {
+                        ex.printStackTrace();
+                        log.warn("Search Error: {}", ex.getMessage());
                         yield getErrorPage(500, model);
                     }
                     Context context = new Context();
@@ -123,19 +124,19 @@ public class PageManager {
             case "watch" -> {
                 Context context = new Context();
                 String videoID = request.getParameter("v");
-                log.info("VID ID: {}", videoID);
+                log.info("Watching video: {}", videoID);
                 context.setVariable("id", videoID);
                 yield getPage("watch", model, context);
             }
             case "profile" -> {
                 if (global.checkAuth(request)) {
                     Context context = new Context();
-                    context.setVariable("pfp", uid == null ? "default-pfp" : "pfp/" + uid);
+                    context.setVariable("pfp", uid == null ? "default" : "user/" + uid);
 
                     // Get user info
                     String displayName = "Error", username = "Error", bio = "Error fetching bio";
                     long timestamp = System.currentTimeMillis();
-                    try (PreparedStatement ps = global.getDB().prepareStatement("SELECT username, displayname, bio, timestamp FROM users WHERE id = ?")) {
+                    try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT username, displayname, bio, timestamp FROM users WHERE id = ?")) {
                         ps.setString(1, uid);
                         ResultSet result = ps.executeQuery();
                         if (result.next()) {
@@ -145,7 +146,7 @@ public class PageManager {
                             timestamp = result.getLong("timestamp");
                         }
                     } catch (SQLException ex) {
-                        
+                        ex.printStackTrace();
                     }
                     context.setVariable("display", displayName);
                     context.setVariable("username", "@" + username);

@@ -51,7 +51,7 @@
             <p th:text="*{description}">Video Description</p>
             <div class="author">
                 <div class="pfp">
-                    <img th:src="*{pfp}">
+                    <img th:src="|/api/pfp/user/*{pfp}|">
                 </div>
                 <p th:text="*{author}">John Doe</p>
             </div>
@@ -67,8 +67,6 @@
 </div>
 <script>
     document.querySelectorAll(".result").forEach(element => {
-        element.addEventListener("click", () => {
-            window.location.href = element.getAttribute("data-link");
-        });
+        element.addEventListener("click", () => window.location.href = element.getAttribute("data-link"));
     });
 </script>

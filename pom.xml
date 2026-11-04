@@ -79,6 +79,13 @@
             <version>4.6.8</version>
         </dependency>
 
+        <!-- FFMPEG for video stuff (idk yet as of the time of writing this) -->
+        <dependency>
+            <groupId>org.bytedeco</groupId>
+            <artifactId>ffmpeg-platform</artifactId>
+            <version>7.1-1.5.11</version>
+        </dependency>
+
         <!-- Live Reload -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

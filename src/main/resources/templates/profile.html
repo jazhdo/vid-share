@@ -220,21 +220,15 @@ h1 {
 const PFPElement = document.getElementById("pfp"), PFPImgElement = PFPElement.querySelector("img"), uploadPFPBackgroundElement = document.getElementById("upload-pfp-background"),
 uploadPFPElement = document.getElementById("upload-pfp"), /** @type {HTMLInputElement} */ uploadPFPInputElement = document.querySelector("#upload-pfp label input");
 
-PFPElement.onclick = () => {
-    uploadPFPBackgroundElement.style.display = "flex";
-}
-uploadPFPBackgroundElement.onclick = () => {
-    uploadPFPBackgroundElement.style.display = "none";
-}
-uploadPFPElement.onclick = (event) => {
-    event.stopPropagation();
-}
+PFPElement.onclick = () => uploadPFPBackgroundElement.style.display = "flex";
+uploadPFPBackgroundElement.onclick = () => uploadPFPBackgroundElement.style.display = "none";
+uploadPFPElement.onclick = (event) => event.stopPropagation();
 uploadPFPInputElement.onchange = async () => {
     uploadPFPBackgroundElement.style.display = "none";
     console.log("Uploading PFP: " + uploadPFPInputElement.value.substring(12));
     const file = uploadPFPInputElement.files[0], bytes = await file.bytes();
     PFPImgElement.setAttribute("src", "data:" + file.type + ";base64," + bytes.toBase64());
-    await fetch("/api/pfp/" + PFPElement.getAttribute("data-uid"), {
+    await fetch("/api/pfp/user/" + PFPElement.getAttribute("data-uid"), {
         method: "POST",
         headers: {
             "Content-Type": "image/" + uploadPFPInputElement.files
@@ -243,7 +237,7 @@ uploadPFPInputElement.onchange = async () => {
     });
 }
 
-// Other savings
+// Other saves
 const displayNameInput = document.querySelector("#names input"), savedStatusElement = document.getElementById("saved-status"),
 bioInput = document.querySelector("#content textarea");
 let savedTimeout = null;
