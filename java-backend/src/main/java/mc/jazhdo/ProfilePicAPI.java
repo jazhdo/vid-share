@@ -20,7 +20,7 @@ import com.sksamuel.scrimage.webp.WebpWriter;
 import jakarta.servlet.http.HttpServletRequest;
 
 @SuppressWarnings("CallToPrintStackTrace")
-@RequestMapping("/api/pfp")
+@RequestMapping("/api/pfp/{userid}")
 @Controller
 public class ProfilePicAPI {
     private final Global global;
@@ -37,7 +37,7 @@ public class ProfilePicAPI {
     public ResponseEntity<byte[]> getDefaultProfilePic() {
         return ResponseEntity.ok().body(Global.defaultProfilePic);
     }
-    @GetMapping(path = "/{userid}", produces = {"image/webp", "image/png"})
+    @GetMapping(produces = {"image/webp", "image/png"})
     @ResponseBody
     public ResponseEntity<byte[]> getProfilePic(@PathVariable String userid) {
         try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT pfp FROM users WHERE id = ?")) {
@@ -52,7 +52,7 @@ public class ProfilePicAPI {
             return getDefaultProfilePic();
         }
     }
-    @PostMapping(path = "/{userid}")
+    @PostMapping
     public ResponseEntity<Void> setProfilePic(@PathVariable String userid, HttpServletRequest request) {
         if (global.checkAuth(request, userid)) {
             // Change the pfp file into .webp format

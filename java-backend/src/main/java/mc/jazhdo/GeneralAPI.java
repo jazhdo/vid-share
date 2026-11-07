@@ -1,12 +1,13 @@
 package mc.jazhdo;
 
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Duration;
 import java.util.Date;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import io.jsonwebtoken.Jwts;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import mc.jazhdo.DB.SQLStatement;
 
 @SuppressWarnings("CallToPrintStackTrace")
 @RequestMapping("/api")
@@ -49,24 +51,23 @@ public class GeneralAPI {
     @PostMapping(path = "/login", produces = "application/json")
     @ResponseBody 
     public ResponseEntity<String> verifyLogin(@RequestBody AuthRequest authRequest, HttpServletRequest request, HttpServletResponse response) {
-        try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT id, password FROM users WHERE username = ?")) {
-            ps.setString(1, authRequest.username());
-            ResultSet result = ps.executeQuery();
-            if (result.next()) {
-                String id = result.getString("id");
-                if (encoder.matches(authRequest.password(), result.getString("password"))) {
-                    Cookie tokenCookie = new Cookie("token", Jwts.builder().subject(id).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact());
-                    tokenCookie.setHttpOnly(true);
-                    tokenCookie.setPath("/");
-                    response.addCookie(tokenCookie);
+        try {
+            JSONObject result = DB.execute(new SQLStatement("SELECT id, password FROM users WHERE username = ?", authRequest.username())).getJSONArray("result").getJSONObject(0).getJSONArray("results").getJSONObject(0);
+            String id = result.getString("id");
+            if (encoder.matches(authRequest.password(), result.getString("password"))) {
+                Cookie tokenCookie = new Cookie("token", Jwts.builder().subject(id).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact());
+                tokenCookie.setHttpOnly(true);
+                tokenCookie.setPath("/");
+                response.addCookie(tokenCookie);
 
-                    Cookie UIDCookie = new Cookie("uid", id);
-                    UIDCookie.setPath("/");
-                    response.addCookie(UIDCookie);
-                    
-                    return ResponseEntity.ok().build();
-                } else return res(HttpStatus.UNAUTHORIZED);
-            } else return res(HttpStatus.NOT_FOUND);
+                Cookie UIDCookie = new Cookie("uid", id);
+                UIDCookie.setPath("/");
+                response.addCookie(UIDCookie);
+                
+                return ResponseEntity.ok().build();
+            } else return res(HttpStatus.UNAUTHORIZED);
+        } catch (JSONException ex) {
+            return res(HttpStatus.NOT_FOUND);
         } catch (SQLException ex) {
             ex.printStackTrace();
             log.warn("Checking the login for user with username {} and password {} failed. Error: {}", new Object[]{authRequest.username(), authRequest.password(), ex.getMessage()});
@@ -77,18 +78,15 @@ public class GeneralAPI {
     @PostMapping(path = "/signup", produces = "application/json")
     @ResponseBody 
     public ResponseEntity<Void> createLogin(@RequestBody SignupRequest signupRequest, HttpServletRequest request, HttpServletResponse response) {
-        try (PreparedStatement ps = Global.getDB().prepareStatement("INSERT INTO users (id, pfp, username, password, displayname, bio, followers) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
+        try {
             String uid = Global.newID();
-            ps.setString(1, uid);
-            ps.setNull(2, Types.BLOB);
-            ps.setString(3, signupRequest.username());
-            ps.setString(4, encoder.encode(signupRequest.password()));
-            ps.setString(5, uppercaseFirst(signupRequest.username()));
-            ps.setString(6, "Hello, I'm a new user!");
-            ps.setInt(7, 0);
-            int rows = ps.executeUpdate();
-            if (rows == 0) return res(HttpStatus.UNAUTHORIZED);
-            else {
+            JSONObject result = DB.executeUpdate(new SQLStatement(
+                "INSERT INTO users (id, pfp, username, password, displayname, bio, followers) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                uid, null, signupRequest.username(), encoder.encode(signupRequest.password()), uppercaseFirst(signupRequest.username()), "Hello, I'm a new user!", 0
+            ));
+            // int rows = ps.executeUpdate();
+            // if (rows == 0) return res(HttpStatus.UNAUTHORIZED);
+            // else {
                 // Token cookie
                 Cookie tokenCookie = new Cookie("token", Jwts.builder().subject(uid).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact());
                 tokenCookie.setHttpOnly(true);
@@ -100,7 +98,7 @@ public class GeneralAPI {
                 response.addCookie(UIDCookie);
 
                 return ResponseEntity.ok().build();
-            }
+            // }
         } catch (SQLException ex) {
             ex.printStackTrace();
             return res(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -112,11 +110,9 @@ public class GeneralAPI {
     @PostMapping(path = "/bio-display/{userid}")
     public ResponseEntity<Void> setBioAndDisplay(@PathVariable String userid, @RequestBody BioAndDisplay bioAndDisplay, HttpServletRequest request) {
         if (global.checkAuth(request, userid)) {
-            try (PreparedStatement ps = Global.getDB().prepareStatement("UPDATE users SET bio = ?, displayname = ? WHERE id = ?")) {
-                ps.setString(1, bioAndDisplay.bio());
-                ps.setString(2, bioAndDisplay.display());
-                ps.setString(3, userid);
-                int affected = ps.executeUpdate();
+            try {
+                String updated = global.db.do("db/update", new SQLStatement("UPDATE users SET bio = ?, displayname = ? WHERE id = ?", bioAndDisplay.bio(), bioAndDisplay.display(), userid));
+                int affected = Integer.parseInt(updated);
                 if (affected == 0) return res(HttpStatus.INTERNAL_SERVER_ERROR);
                 else return ResponseEntity.ok().build();
             } catch (SQLException ex) {

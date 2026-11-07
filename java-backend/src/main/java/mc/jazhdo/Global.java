@@ -2,29 +2,17 @@ package mc.jazhdo;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.SecureRandom;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
-import org.apache.catalina.valves.JsonAccessLogValve;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -47,12 +35,11 @@ import jakarta.servlet.http.HttpServletRequest;
 public class Global {
     public static final Path root = Paths.get(""),dbPath = root.resolve(getEnvOrElse("DB_PATH", "database.db")), videoPath = root.resolve(getEnvOrElse("VIDEO_PATH", "videos"));
     public static final byte[] defaultProfilePic;
-    private static final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
+    public static final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
     private static final ClassLoader classLoader = VidShareApplication.class.getClassLoader();
     private final ApplicationContext applicationContext;
-    private final Database db = new Database();
-    private String cloudflareAccountId, cloudflareDatabaseId, cloudflareApiToken;
-    private URI cloudflareDBUri;
+    public String cloudflareAccountId, cloudflareDatabaseId, cloudflareApiToken;
+    public URI cloudflareDBUri;
     public SecretKey jwtKey;
 
     /**
@@ -108,20 +95,18 @@ public class Global {
 
         // Database tables
         try {
-            Database s = db;
-
             // User tables
-            s.execute("CREATE TABLE IF NOT EXISTS users (id TEXT NOT NULL UNIQUE, pfp BLOB, username TEXT NOT NULL UNIQUE COLLATE NOCASE, password TEXT NOT NULL, displayname TEXT COLLATE NOCASE, bio TEXT, followers INTEGER NOT NULL, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))");
-            s.execute("CREATE TABLE IF NOT EXISTS followers (uid TEXT NOT NULL, followed TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
+            DB.executeUpdate("CREATE TABLE IF NOT EXISTS users (id TEXT NOT NULL UNIQUE, pfp BLOB, username TEXT NOT NULL UNIQUE COLLATE NOCASE, password TEXT NOT NULL, displayname TEXT COLLATE NOCASE, bio TEXT, followers INTEGER NOT NULL, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))");
+            DB.executeUpdate("CREATE TABLE IF NOT EXISTS followers (uid TEXT NOT NULL, followed TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
 
             // Video tables
-            s.execute("CREATE TABLE IF NOT EXISTS videos (id TEXT NOT NULL UNIQUE, uid TEXT NOT NULL, thumbnail TEXT NOT NULL, title TEXT NOT NULL COLLATE NOCASE, description TEXT NOT NULL COLLATE NOCASE, views INTEGER NOT NULL, likes INTEGER NOT NULL, comments INTEGER NOT NULL, shares INTEGER NOT NULL, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))");
-            s.execute("CREATE VIRTUAL TABLE IF NOT EXISTS videos_search USING fts5(title, description)");
-            s.execute("CREATE TABLE IF NOT EXISTS views (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
-            s.execute("CREATE TABLE IF NOT EXISTS likes (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
-            s.execute("CREATE TABLE IF NOT EXISTS comments (id TEXT NOT NULL UNIQUE, uid TEXT NOT NULL, likes INTEGER NOT NULL, video TEXT NOT NULL COLLATE NOCASE, parent TEXT COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))");
-            s.execute("CREATE TABLE IF NOT EXISTS shares (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
-            s.execute("DELETE FROM videos_search");
+            DB.executeUpdate("CREATE TABLE IF NOT EXISTS videos (id TEXT NOT NULL UNIQUE, uid TEXT NOT NULL, thumbnail TEXT NOT NULL, title TEXT NOT NULL COLLATE NOCASE, description TEXT NOT NULL COLLATE NOCASE, views INTEGER NOT NULL, likes INTEGER NOT NULL, comments INTEGER NOT NULL, shares INTEGER NOT NULL, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))");
+            DB.executeUpdate("CREATE VIRTUAL TABLE IF NOT EXISTS videos_search USING fts5(title, description)");
+            DB.executeUpdate("CREATE TABLE IF NOT EXISTS views (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
+            DB.executeUpdate("CREATE TABLE IF NOT EXISTS likes (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
+            DB.executeUpdate("CREATE TABLE IF NOT EXISTS comments (id TEXT NOT NULL UNIQUE, uid TEXT NOT NULL, likes INTEGER NOT NULL, video TEXT NOT NULL COLLATE NOCASE, parent TEXT COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))");
+            DB.executeUpdate("CREATE TABLE IF NOT EXISTS shares (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
+            DB.executeUpdate("DELETE FROM videos_search");
         } catch (SQLException ex) {
             ex.printStackTrace();
             log.error("Creating the database tables failed. Error: {}", ex.getMessage());
@@ -129,16 +114,11 @@ public class Global {
         }
 
         // Populate search index
-        try (PreparedStatement ps = getDB().prepareStatement("INSERT INTO videos_search(rowid, title, description) SELECT rowid, title, description FROM videos")) {
-            ps.executeUpdate();
+        try {
+            DB.executeUpdate("INSERT INTO videos_search(rowid, title, description) SELECT rowid, title, description FROM videos");
         } catch (SQLException ex) {
             ex.printStackTrace();
             log.error("Populating the video search index table failed. Error: {}", ex.getMessage());
-        }
-        try {
-            queryDB("SELECT * FROM users", List.of());
-        } catch (Exception ex) {
-
         }
     }
     private String getSafeEnvironmentVar(String name) {
@@ -197,65 +177,6 @@ public class Global {
 
         // Check that the token is for this user and return true for right auth
         return verifyUID.equals(UID) && payload.getSubject().equals(UID);
-    }
-
-    // Database stuff
-    public static Connection getDB() throws SQLException {
-        return DriverManager.getConnection("jdbc:sqlite:" + dbPath);
-    }
-    public HttpResponse<?> runRequest(String url) throws SQLException {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest req = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
-        return client.send(req, HttpResponse.BodyHandlers.ofString());
-    }
-    private class Database {
-        public JSONObject execute(String statement) throws SQLException {
-            return execute(new SQLStatement(statement));
-        }
-        // Helper function to perform a query on the cloudflare d1 database (Documentation at https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/)
-        public JSONObject execute(SQLStatement statement) throws SQLException {
-            JSONObject body = new JSONObject();
-            body.put("sql", statement.sql());
-            body.put("params", statement.params());
-
-            HttpResponse<String> res = executeStatementNetworkRequest(body.toString());
-
-            log.info("Request returned the following string:\n" + res.body());
-            
-            return new JSONObject(res.body());
-        }
-        public JSONObject execute(SQLStatement... statements) throws SQLException {
-            JSONArray batch = new JSONArray();
-            for (SQLStatement statement : statements) {
-                JSONObject item = new JSONObject();
-                item.put("sql", statement.sql());
-                item.put("params", new JSONArray(statement.params()));
-                batch.put(item);
-            }
-
-            HttpResponse<String> res = executeStatementNetworkRequest(batch.toString());
-
-            log.info("Request returned the following string:\n" + res.body());
-
-            return new JSONObject(res.body());
-        }
-        public record SQLStatement(String sql, String... params) {}
-        private HttpResponse<String> executeStatementNetworkRequest(String body) throws SQLException {
-            HttpRequest req = HttpRequest.newBuilder(cloudflareDBUri)
-                .timeout(Duration.ofSeconds(30))
-                .headers("Authorization", "Bearer " + cloudflareApiToken, "Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
-
-            HttpResponse<String> res;
-            try {
-                res = HttpClient.newBuilder().build().send(req, HttpResponse.BodyHandlers.ofString());
-            } catch (IOException | InterruptedException ex)  {
-                throw new SQLException();
-            }
-
-            return res;
-        }
     }
 
     // Gemini generated id generator
