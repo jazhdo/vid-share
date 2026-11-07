@@ -1,7 +1,6 @@
 package mc.jazhdo;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,17 +34,10 @@ public class ProfilePicAPI {
         return Global.res(status);
     }
 
-    @GetMapping(path = "/default", produces = "image/png")
-    @ResponseBody 
     public ResponseEntity<byte[]> getDefaultProfilePic() {
-        try {
-            return ResponseEntity.ok().body(Files.readAllBytes(Global.root.resolve(global.defaultProfilePic)));
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            return res(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        return ResponseEntity.ok().body(Global.defaultProfilePic);
     }
-    @GetMapping(path = "/user/{userid}", produces = {"image/webp", "image/png"})
+    @GetMapping(path = "/{userid}", produces = {"image/webp", "image/png"})
     @ResponseBody
     public ResponseEntity<byte[]> getProfilePic(@PathVariable String userid) {
         try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT pfp FROM users WHERE id = ?")) {
@@ -60,7 +52,7 @@ public class ProfilePicAPI {
             return getDefaultProfilePic();
         }
     }
-    @PostMapping(path = "/user/{userid}")
+    @PostMapping(path = "/{userid}")
     public ResponseEntity<Void> setProfilePic(@PathVariable String userid, HttpServletRequest request) {
         if (global.checkAuth(request, userid)) {
             // Change the pfp file into .webp format

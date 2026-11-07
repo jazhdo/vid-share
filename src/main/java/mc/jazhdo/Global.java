@@ -1,6 +1,10 @@
 package mc.jazhdo;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,11 +15,16 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 import javax.crypto.SecretKey;
 
+import org.apache.catalina.valves.JsonAccessLogValve;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
@@ -36,36 +45,71 @@ import jakarta.servlet.http.HttpServletRequest;
 @SuppressWarnings("CallToPrintStackTrace")
 @Component 
 public class Global {
-    public static final Path root = Paths.get(""), dbPath = root.resolve("database.db"), videoPath = root.resolve("videos");
+    public static final Path root = Paths.get(""),dbPath = root.resolve(getEnvOrElse("DB_PATH", "database.db")), videoPath = root.resolve(getEnvOrElse("VIDEO_PATH", "videos"));
+    public static final byte[] defaultProfilePic;
     private static final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
+    private static final ClassLoader classLoader = VidShareApplication.class.getClassLoader();
     private final ApplicationContext applicationContext;
-    public String defaultProfilePic;
+    private final Database db = new Database();
+    private String cloudflareAccountId, cloudflareDatabaseId, cloudflareApiToken;
+    private URI cloudflareDBUri;
     public SecretKey jwtKey;
 
-    public Global(ApplicationContext applicationContext) {
-        this.applicationContext = applicationContext;
+    /**
+     * Gets a system environment variable or returns a default value if its null
+     * 
+     * @param name The name of the system environment variable
+     * @param otherwise The value to default to
+     * @return The value of the environment variable, or the defaulted to value
+     */
+    private static String getEnvOrElse(String name, String otherwise) {
+        String env = System.getenv(name);
+        return env == null ? otherwise : env;
     }
 
-    // SQLite databases
-    @EventListener(ApplicationReadyEvent.class) 
-    public void onApplicationReady() {
-        log.info("Starting up...");
-
-        // Get environment values
-        defaultProfilePic = getSafeEnvironmentVar("DEFAULT_PFP");
-        jwtKey = Keys.hmacShaKeyFor(getSafeEnvironmentVar("JWT_KEY").getBytes(StandardCharsets.UTF_8));
-
+    static {
         // Create folders
         try {
             Files.createDirectories(videoPath);
         } catch (IOException ex) {
             ex.printStackTrace();
             log.error("Creating the video directory failed. Error: {}", ex.getMessage());
-            return;
         }
 
+        // Get default PFP
+        byte[] tempPFP;
+        try {
+            Path file = root.resolve(getEnvOrElse("DEFAULT_PFP", "cat.png"));
+            if (Files.exists(file)) tempPFP = Files.readAllBytes(file);
+            else tempPFP = classLoader.getResourceAsStream("cat.png").readAllBytes();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            log.error("Getting the default PFP's bytes failed. Error: {}", ex.getMessage());
+            tempPFP = new byte[0];
+        }
+        defaultProfilePic = tempPFP;
+    }
+
+    public Global(ApplicationContext applicationContext) {
+        this.applicationContext = applicationContext;
+    }
+
+    // Startup
+    @EventListener(ApplicationReadyEvent.class) 
+    public void onApplicationReady() {
+        log.info("Starting up...");
+
+        // Get environment values
+        jwtKey = Keys.hmacShaKeyFor(getSafeEnvironmentVar("JWT_KEY").getBytes(StandardCharsets.UTF_8));
+        cloudflareAccountId = getSafeEnvironmentVar("CLOUDFLARE_ACCOUNT_ID");
+        cloudflareDatabaseId = getSafeEnvironmentVar("CLOUDFLARE_DB_ID");
+        cloudflareApiToken = getSafeEnvironmentVar("CLOUDFLARE_API_TOKEN");
+        cloudflareDBUri = URI.create("https://api.cloudflare.com/client/v4/accounts/%s/d1/database/%s/query".formatted(cloudflareAccountId, cloudflareDatabaseId));
+
         // Database tables
-        try (Statement s = getDB().createStatement()) {
+        try {
+            Database s = db;
+
             // User tables
             s.execute("CREATE TABLE IF NOT EXISTS users (id TEXT NOT NULL UNIQUE, pfp BLOB, username TEXT NOT NULL UNIQUE COLLATE NOCASE, password TEXT NOT NULL, displayname TEXT COLLATE NOCASE, bio TEXT, followers INTEGER NOT NULL, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))");
             s.execute("CREATE TABLE IF NOT EXISTS followers (uid TEXT NOT NULL, followed TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))");
@@ -91,6 +135,11 @@ public class Global {
             ex.printStackTrace();
             log.error("Populating the video search index table failed. Error: {}", ex.getMessage());
         }
+        try {
+            queryDB("SELECT * FROM users", List.of());
+        } catch (Exception ex) {
+
+        }
     }
     private String getSafeEnvironmentVar(String name) {
         String env = System.getenv(name);
@@ -101,12 +150,20 @@ public class Global {
         return env;
     }
 
-    // Auth tools
+    /**
+     * Gets the value of a cookie given its key from a array of cookies
+     * 
+     * @param key The key to search for
+     * @param cookies The array of cookies to look in
+     * @return The value of the cookie, or null if not found
+     */
     public static String getCookieValue(String key, Cookie[] cookies) {
         // Null check
         if (cookies == null) return null;
         return Arrays.stream(cookies).filter(cookie -> cookie.getName().equals(key)).findFirst().map(Cookie::getValue).orElse(null);
     }
+
+    // TODO: Combine these two :)
     public boolean checkAuth(HttpServletRequest request) {
         // Check for the existence of the header
         Cookie[] cookies = request.getCookies();
@@ -142,9 +199,63 @@ public class Global {
         return verifyUID.equals(UID) && payload.getSubject().equals(UID);
     }
 
-    // Database retriever
+    // Database stuff
     public static Connection getDB() throws SQLException {
         return DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+    }
+    public HttpResponse<?> runRequest(String url) throws SQLException {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest req = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
+        return client.send(req, HttpResponse.BodyHandlers.ofString());
+    }
+    private class Database {
+        public JSONObject execute(String statement) throws SQLException {
+            return execute(new SQLStatement(statement));
+        }
+        // Helper function to perform a query on the cloudflare d1 database (Documentation at https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/)
+        public JSONObject execute(SQLStatement statement) throws SQLException {
+            JSONObject body = new JSONObject();
+            body.put("sql", statement.sql());
+            body.put("params", statement.params());
+
+            HttpResponse<String> res = executeStatementNetworkRequest(body.toString());
+
+            log.info("Request returned the following string:\n" + res.body());
+            
+            return new JSONObject(res.body());
+        }
+        public JSONObject execute(SQLStatement... statements) throws SQLException {
+            JSONArray batch = new JSONArray();
+            for (SQLStatement statement : statements) {
+                JSONObject item = new JSONObject();
+                item.put("sql", statement.sql());
+                item.put("params", new JSONArray(statement.params()));
+                batch.put(item);
+            }
+
+            HttpResponse<String> res = executeStatementNetworkRequest(batch.toString());
+
+            log.info("Request returned the following string:\n" + res.body());
+
+            return new JSONObject(res.body());
+        }
+        public record SQLStatement(String sql, String... params) {}
+        private HttpResponse<String> executeStatementNetworkRequest(String body) throws SQLException {
+            HttpRequest req = HttpRequest.newBuilder(cloudflareDBUri)
+                .timeout(Duration.ofSeconds(30))
+                .headers("Authorization", "Bearer " + cloudflareApiToken, "Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+            HttpResponse<String> res;
+            try {
+                res = HttpClient.newBuilder().build().send(req, HttpResponse.BodyHandlers.ofString());
+            } catch (IOException | InterruptedException ex)  {
+                throw new SQLException();
+            }
+
+            return res;
+        }
     }
 
     // Gemini generated id generator

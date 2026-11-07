@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -47,9 +48,6 @@ public class PageManager {
     private String uppercaseFirst(String input) {
         return input.substring(0, 1).toUpperCase() + input.substring(1);
     }
-    private String getPage(String pageName, Model model) {
-        return getPage(pageName, model, new Context());
-    }
     private String getPage(String pageName, Model model, Context pageContent) {
         String fileContents = templateEngine.process(pageName + ".html", pageContent);
         Page page = new Page(uppercaseFirst(pageName), fileContents);
@@ -57,13 +55,13 @@ public class PageManager {
         return "main";
     }
     public record Page(String name, String content) {};
-    private String getErrorPage(int errorCode, Model model) {
+    private String getErrorPage(HttpStatus status, Model model) {
         Context context = new Context();
-        context.setVariable("header", "Error " + Integer.toString(errorCode) + " " + switch (errorCode) {
-            case 400 -> "Bad Request";
-            case 404 -> "Not Found";
-            case 421 -> "Misdirected Request";
-            case 500 -> "Internal Server Error";
+        context.setVariable("header", "Error " + Integer.toString(status.value()) + " " + switch (status) {
+            case HttpStatus.BAD_REQUEST -> "Bad Request";
+            case HttpStatus.NOT_FOUND -> "Not Found";
+            case HttpStatus.MISDIRECTED_REQUEST -> "Misdirected Request";
+            case HttpStatus.INTERNAL_SERVER_ERROR -> "Internal Server Error";
             default -> "Unknown Error";
         });
         return getPage("error", model, context);
@@ -78,7 +76,7 @@ public class PageManager {
         // Profile pic logic
         String uid = Global.getCookieValue("uid", request.getCookies());
         log.info("Request UID: {}", uid);
-        model.addAttribute("profilePicture", uid != null ? ("user/" + uid) : "default");
+        model.addAttribute("pfp", uid != null ? uid : "default");
 
         Context context = new Context();
         try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT * FROM videos ORDER BY rowid DESC LIMIT 50")) {
@@ -88,7 +86,7 @@ public class PageManager {
             context.setVariable("videos", videos);
         } catch (SQLException ex) {
             ex.printStackTrace();
-            return getErrorPage(500, model);
+            return getErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, model);
         }
         return getPage("home", model, context);
     }
@@ -98,29 +96,32 @@ public class PageManager {
         // Profile pic logic
         String uid = Global.getCookieValue("uid", request.getCookies());
         log.info("Request UID: {}", uid);
-        model.addAttribute("profilePicture", uid != null ? ("user/" + uid) : "default");
+        model.addAttribute("pfp", uid != null ? uid : "default");
 
         return switch (page) {
             case "search" -> {
                 String query = request.getParameter("q");
                 if (query != null) {
                     List<SearchResult> searchResults = new ArrayList<>();
-                    try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.pfp, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")) {
+                    try (PreparedStatement ps = Global.getDB().prepareStatement(
+                        "SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.pfp, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC"
+                        )
+                    ) {
                         ps.setString(1, query);
                         ResultSet results = ps.executeQuery();
                         while (results.next()) searchResults.add(new SearchResult("/watch?v=" + results.getString("id"), results.getString("thumbnail"), results.getString("title"), results.getString("description"), results.getBytes("pfp"), results.getString("displayname"), results.getInt("views"), results.getInt("likes"), 0, formatTimestamp(results.getLong("timestamp"))));
                     } catch (SQLException ex) {
                         ex.printStackTrace();
                         log.warn("Search Error: {}", ex.getMessage());
-                        yield getErrorPage(500, model);
+                        yield getErrorPage(HttpStatus.INTERNAL_SERVER_ERROR, model);
                     }
                     Context context = new Context();
                     context.setVariable("results", searchResults);
                     context.setVariable("search", new SearchData(query, searchResults.isEmpty()));
                     yield getPage("search", model, context);
-                } else yield getErrorPage(400, model);
+                } else yield getErrorPage(HttpStatus.BAD_REQUEST, model);
             }
-            case "make", "login" -> getPage(page, model);
+            case "make", "login" -> getPage(page, model, new Context());
             case "watch" -> {
                 Context context = new Context();
                 String videoID = request.getParameter("v");
@@ -154,9 +155,9 @@ public class PageManager {
                     context.setVariable("timestamp", formatTimestamp(timestamp));
                     context.setVariable("uid", uid);
                     yield getPage("profile", model, context);
-                } else yield getPage("login", model);
+                } else yield getPage("login", model, new Context());
             }
-            default -> getErrorPage(404, model);
+            default -> getErrorPage(HttpStatus.NOT_FOUND, model);
         };
     }
     public record SearchResult(String link, String thumbnail, String title, String description, byte[] pfp, String author, int views, int likes, int comments, String date) {};

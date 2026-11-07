@@ -8,6 +8,7 @@
 html {
     height: 100%;
     width: 100%;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 body {
     margin: 0px;
@@ -147,7 +148,7 @@ header a {
         </form>
         <a href="/make">Make</a>
         <div id="profile" onclick="window.location.href = '/profile';">
-            <img th:src="|/api/${profilePicture}|">
+            <img th:src="|/api/pfp/${profilePicture}|">
         </div>
     </header>
     <div id="main" th:utext="${page.content()}"></div>

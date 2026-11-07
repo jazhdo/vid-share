@@ -27,12 +27,12 @@ import jakarta.servlet.http.HttpServletResponse;
 @SuppressWarnings("CallToPrintStackTrace")
 @RequestMapping("/api")
 @Controller 
-public class APIPaths {
-    private final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
+public class GeneralAPI {
+    private static final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
     private final Global global;
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    private static final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    public APIPaths(Global global) {
+    public GeneralAPI(Global global) {
         this.global = global;
     }
 
@@ -120,6 +120,7 @@ public class APIPaths {
                 if (affected == 0) return res(HttpStatus.INTERNAL_SERVER_ERROR);
                 else return ResponseEntity.ok().build();
             } catch (SQLException ex) {
+                ex.printStackTrace();
                 return res(HttpStatus.INTERNAL_SERVER_ERROR);
             }
         } else return res(HttpStatus.UNAUTHORIZED);

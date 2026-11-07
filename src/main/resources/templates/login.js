@@ -18,13 +18,12 @@ form.addEventListener("submit", async (/** @type {SubmitEvent} */ event) => {
 
     if (login) {
         if (res.status === 401) return showError("Incorrect password.");
-        else if (res.status === 404) return showError("Incorrect username.");
+        else if (res.status === 404) return showError("Invalid username.");
         else if (res.status === 500) return showError("An internal server error occurred. Please try again in a few minutes.");
     } else {
         if (res.status === 401 || res.status === 500) return showError("That username is already taken. Please try another.");
     }
 
-    // TODO: Here, redirect to the profile page and load that stuff
     document.getElementById("window").querySelectorAll("button").forEach(element => element.onclick = () => {});
     form.querySelectorAll("input").forEach(element => element.disabled = true);
     error.style.color = "green";

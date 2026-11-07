@@ -1,7 +1,23 @@
 <style>
-#main h1 {
+main {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+main h1 {
     margin: 0px;
+
+    font-size: 45px;
+    font-weight: 600;
+}
+main p {
+    margin: 10px 0px;
+
+    font-size: 25px;
+    font-weight: 400;
 }
 </style>
-<h1 th:text="${header}">Error 404 Page Not Found</h1>
-<p>Please return to a working page <a href="https://1j2t0zr0-8080.usw3.devtunnels.ms/">here</a>.</p>
+<main>
+    <h1 th:text="${header}">Error 404 Page Not Found</h1>
+    <p>Please return to a working page <a href="https://1j2t0zr0-8080.usw3.devtunnels.ms/">here</a>.</p>
+</main>
