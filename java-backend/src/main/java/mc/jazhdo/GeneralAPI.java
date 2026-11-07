@@ -1,8 +1,8 @@
 package mc.jazhdo;
 
-import java.sql.PreparedStatement;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.time.Duration;
 import java.util.Date;
 
@@ -52,7 +52,7 @@ public class GeneralAPI {
     @ResponseBody 
     public ResponseEntity<String> verifyLogin(@RequestBody AuthRequest authRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
-            JSONObject result = DB.execute(new SQLStatement("SELECT id, password FROM users WHERE username = ?", authRequest.username())).getJSONArray("result").getJSONObject(0).getJSONArray("results").getJSONObject(0);
+            JSONObject result = DB.execute(new SQLStatement("SELECT id, password FROM users WHERE username = ?", authRequest.username()));
             String id = result.getString("id");
             if (encoder.matches(authRequest.password(), result.getString("password"))) {
                 Cookie tokenCookie = new Cookie("token", Jwts.builder().subject(id).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact());
@@ -80,13 +80,12 @@ public class GeneralAPI {
     public ResponseEntity<Void> createLogin(@RequestBody SignupRequest signupRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
             String uid = Global.newID();
-            JSONObject result = DB.executeUpdate(new SQLStatement(
+            int rows = DB.executeUpdate(new SQLStatement(
                 "INSERT INTO users (id, pfp, username, password, displayname, bio, followers) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 uid, null, signupRequest.username(), encoder.encode(signupRequest.password()), uppercaseFirst(signupRequest.username()), "Hello, I'm a new user!", 0
             ));
-            // int rows = ps.executeUpdate();
-            // if (rows == 0) return res(HttpStatus.UNAUTHORIZED);
-            // else {
+            if (rows == 0) return res(HttpStatus.UNAUTHORIZED);
+            else {
                 // Token cookie
                 Cookie tokenCookie = new Cookie("token", Jwts.builder().subject(uid).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact());
                 tokenCookie.setHttpOnly(true);
@@ -98,7 +97,7 @@ public class GeneralAPI {
                 response.addCookie(UIDCookie);
 
                 return ResponseEntity.ok().build();
-            // }
+            }
         } catch (SQLException ex) {
             ex.printStackTrace();
             return res(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -108,20 +107,19 @@ public class GeneralAPI {
 
     // Set Bio & Display Name endpoints
     @PostMapping(path = "/bio-display/{userid}")
-    public ResponseEntity<Void> setBioAndDisplay(@PathVariable String userid, @RequestBody BioAndDisplay bioAndDisplay, HttpServletRequest request) {
+    public ResponseEntity<Void> setBioAndDisplay(@PathVariable String userid, HttpServletRequest request) {
         if (global.checkAuth(request, userid)) {
             try {
-                String updated = global.db.do("db/update", new SQLStatement("UPDATE users SET bio = ?, displayname = ? WHERE id = ?", bioAndDisplay.bio(), bioAndDisplay.display(), userid));
-                int affected = Integer.parseInt(updated);
+                JSONObject json = new JSONObject(new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
+                int affected = DB.executeUpdate(new SQLStatement("UPDATE users SET bio = ?, displayname = ? WHERE id = ?", json.get("bio"), json.get("display"), userid));
                 if (affected == 0) return res(HttpStatus.INTERNAL_SERVER_ERROR);
                 else return ResponseEntity.ok().build();
-            } catch (SQLException ex) {
+            } catch (SQLException | IOException | JSONException ex) {
                 ex.printStackTrace();
                 return res(HttpStatus.INTERNAL_SERVER_ERROR);
             }
         } else return res(HttpStatus.UNAUTHORIZED);
     }
-    public record BioAndDisplay(String bio, String display) {}
 
     // // View endpoint
     // @PostMapping(path = "/api/views/{video}")

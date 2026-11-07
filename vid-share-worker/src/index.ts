@@ -20,6 +20,11 @@ function res(status: number): Response {
     return res;
 }
 
+type SQLStatement = {
+    sql: string,
+    params: string[]
+}
+
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
         const url = new URL(request.url);
@@ -30,23 +35,31 @@ export default {
         else pathname = pathname.substring(4);
         console.log("Request towards api path " + pathname + " recieved");
         
-        // Payload
-        const payload = await request.json() as {sql: string, params: string[]}[];
-
         switch (pathname) {
             case "/db/prepare":
                 // Like a single SQL preparedStatement execution
                 {
-                    const item = payload[0];
+                    const item = await request.json() as SQLStatement;
                     const res = await env.prod.prepare(item.sql).bind(item.params).run();
 
-                    console.log("Results: " + JSON.stringify(res));
+                    console.log("Result: " + JSON.stringify(res));
+
                     return new Response(JSON.stringify(res.results));
                 }
-                break;
+            case "/db/update":
+                // Like a SQL preparedStatement UPDATE / INSERT / DELETE execution
+                {
+                    const item = await request.json() as SQLStatement;
+                    const res = await env.prod.prepare(item.sql).bind(item.params).run();
+
+                    console.log("Update Result: " + JSON.stringify(res));
+
+                    return new Response(JSON.stringify(res.meta.changes));
+                }
             case "/db/batch":
                 // Like a mass SQL preparedStatement execution
                 {
+                    const payload = await request.json() as SQLStatement[];
                     const statements: D1PreparedStatement[] = [];
                     payload.forEach(payloadItem => {
                         statements.push(env.prod.prepare(payloadItem.sql).bind(payloadItem.params));
@@ -57,22 +70,29 @@ export default {
 
                     return new Response(JSON.stringify(res));
                 }
-                break;
-            case "/db/update":
-                // Like a SQL update
+            case "/db/exec":
+                // Like a SQL update but without any parameters
                 {
-                    const statement = payload[0];
-                    const res = await env.prod.exec(statement.sql);
+                    const statement = await request.text();
+                    const res = await env.prod.exec(statement);
                     
                     console.log("Exec Result: " + JSON.stringify(res));
 
                     return new Response(JSON.stringify(res.count));
                 }
+            case "/db/pfp":
+                // Specialized endpoint for dealing with the bytes
+                {
+                    if (request.method === "POST") {
+                        const payload = await request.formData();
+                        const res = await env.prod.prepare("UPDATE users SET pfp = ? WHERE id = ?").bind(payload.get("pfp") as File, payload.get("id") as string).run();
+                        return new Response(res.meta.changes.toString());
+                    } else if (request.method === "QUERY") {
+                        return new Response(await env.prod.prepare("SELECT pfp FROM users WHERE id = ?").bind(await request.text()).first<ArrayBuffer>());
+                    }
+                }
                 break;
-            default:
-                return res(404);
         }
-
-		return new Response("Hello Worker!");
+        return res(404);
 	}
 } satisfies ExportedHandler<Env>;

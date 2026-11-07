@@ -38,8 +38,6 @@ public class Global {
     public static final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
     private static final ClassLoader classLoader = VidShareApplication.class.getClassLoader();
     private final ApplicationContext applicationContext;
-    public String cloudflareAccountId, cloudflareDatabaseId, cloudflareApiToken;
-    public URI cloudflareDBUri;
     public SecretKey jwtKey;
 
     /**
@@ -88,10 +86,6 @@ public class Global {
 
         // Get environment values
         jwtKey = Keys.hmacShaKeyFor(getSafeEnvironmentVar("JWT_KEY").getBytes(StandardCharsets.UTF_8));
-        cloudflareAccountId = getSafeEnvironmentVar("CLOUDFLARE_ACCOUNT_ID");
-        cloudflareDatabaseId = getSafeEnvironmentVar("CLOUDFLARE_DB_ID");
-        cloudflareApiToken = getSafeEnvironmentVar("CLOUDFLARE_API_TOKEN");
-        cloudflareDBUri = URI.create("https://api.cloudflare.com/client/v4/accounts/%s/d1/database/%s/query".formatted(cloudflareAccountId, cloudflareDatabaseId));
 
         // Database tables
         try {

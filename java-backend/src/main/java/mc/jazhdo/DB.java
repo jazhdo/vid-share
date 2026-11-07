@@ -5,9 +5,15 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublisher;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpRequest.Builder;
 import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandler;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.function.Function;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -15,18 +21,20 @@ import org.slf4j.Logger;
 
 public class DB {
     private static final Logger log = Global.log;
-    private static final String cloudflareWorkerAPI = "http://localhost:8787/api/";
+    private static final String CLOUDFLARE_WORKER_API = "http://localhost:8787/api/";
+    
+    // Helper functions to perform queries on the cloudflare d1 database (Documentation at https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/)
 
+    // PreparedStatement execution
     public static JSONObject execute(String statement) throws SQLException {
         return execute(new SQLStatement(statement));
     }
-    // Helper function to perform a query on the cloudflare d1 database (Documentation at https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/)
     public static JSONObject execute(SQLStatement statement) throws SQLException {
         JSONObject body = new JSONObject();
         body.put("sql", statement.sql());
         body.put("params", statement.params());
 
-        HttpResponse<String> res = doNetReq(cloudflareWorkerAPI + "db/prepare", body.toString());
+        HttpResponse<String> res = post("db/prepare", BodyPublishers.ofString(body.toString()), BodyHandlers.ofString(), "Content-Type", "application/json");
 
         log.info("Request returned the following string:\n" + res.body());
         
@@ -41,13 +49,15 @@ public class DB {
             batch.put(item);
         }
 
-        HttpResponse<String> res = doNetReq(cloudflareWorkerAPI + "db/batch", batch.toString());
+        HttpResponse<String> res = post("db/batch", BodyPublishers.ofString(batch.toString()), BodyHandlers.ofString(), "Content-Type", "application/json");
 
         log.info("Batch request returned the following string:\n" + res.body());
 
         return new JSONObject(res.body());
     }
-    public static JSONObject executeUpdate(String statement) throws SQLException {
+
+    // Updates
+    public static int executeUpdate(String statement) throws SQLException {
         return executeUpdate(new SQLStatement(statement));
     }
     public static int executeUpdate(SQLStatement statement) throws SQLException {
@@ -55,36 +65,48 @@ public class DB {
         body.put("sql", statement.sql());
         body.put("params", statement.params());
 
-        HttpResponse<String> res = doNetReq(cloudflareWorkerAPI + "db/update", body.toString());
+        HttpResponse<String> res = post("db/update", BodyPublishers.ofString(body.toString()), BodyHandlers.ofString(), "Content-Type", "application/json");
+
+        log.info("Request returned the following string:\n" + res.body());
+        
+        return new JSONArray(res.body()).length();
+    }
+
+    // Raw statement execution
+    public static int executeStatement(String statement) throws SQLException {
+        HttpResponse<String> res = post("db/exec", BodyPublishers.ofString(statement), BodyHandlers.ofString());
 
         log.info("Update request returned the following string:\n" + res.body());
 
         return Integer.parseInt(res.body());
     }
-    private static HttpResponse<String> doNetReq(String url, String body) throws SQLException {
+    public static <T> HttpResponse<T> post(String path, BodyPublisher body, BodyHandler<T> handler, String... headers) throws SQLException {
+        return req(path, (builder) -> builder.POST(body), handler, headers);
+    }
+    public static <T> HttpResponse<T> get(String path, BodyHandler<T> handler, String... headers) throws SQLException {
+        return req(path, (builder) -> builder.GET(), handler, headers);
+    }
+    public static <T> HttpResponse<T> query(String path, BodyPublisher body, BodyHandler<T> handler, String... headers) throws SQLException {
+        return req(path, (builder) -> builder.method("QUERY", body), handler, headers);
+    }
+    public static <T> HttpResponse<T> req(String path, Function<Builder, Builder> method, BodyHandler<T> handler, String... headers) throws SQLException {
         HttpRequest req;
         try {
-            req = HttpRequest.newBuilder(new URI(url))
+            req = method.apply(HttpRequest.newBuilder(new URI(CLOUDFLARE_WORKER_API + path))
                 .timeout(Duration.ofSeconds(30))
-                .headers("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
+                .headers(headers)).build();
         } catch (URISyntaxException ex) {
             throw new SQLException();
         }
 
-        HttpResponse<String> res;
+        HttpResponse<T> res;
         try {
-            res = HttpClient.newBuilder().build().send(req, HttpResponse.BodyHandlers.ofString());
+            res = HttpClient.newBuilder().build().send(req, handler);
         } catch (IOException | InterruptedException ex)  {
             throw new SQLException();
         }
 
         return res;
-    }
-    public static String req(String path, JSONObject body) throws SQLException {
-        HttpResponse<String> res = doNetReq(cloudflareWorkerAPI + path, body.toString());
-        return res.body();
     }
     public static record SQLStatement(String sql, Object... params) {}
 }
