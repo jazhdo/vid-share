@@ -33,24 +33,33 @@ export default {
         // If someone is trying to just check what this is
         if (!pathname.startsWith("/api/")) return res(404);
         else pathname = pathname.substring(4);
-        console.log("Request towards api path " + pathname + " recieved");
         
         switch (pathname) {
             case "/db/prepare":
                 // Like a single SQL preparedStatement execution
                 {
                     const item = await request.json() as SQLStatement;
-                    const res = await env.prod.prepare(item.sql).bind(item.params).run();
+                    const res = await env.prod.prepare(item.sql).bind(...item.params).run();
 
                     console.log("Result: " + JSON.stringify(res));
 
                     return new Response(JSON.stringify(res.results));
                 }
+            case "/db/first":
+                // Like a single SQL preparedStatement execution but only getting the first element
+                {
+                    const item = await request.json() as SQLStatement;
+                    const res = await env.prod.prepare(item.sql).bind(...item.params).first();
+
+                    console.log("First Result: " + JSON.stringify(res?.results));
+
+                    return new Response(res === null ? null : JSON.stringify(res));
+                }
             case "/db/update":
                 // Like a SQL preparedStatement UPDATE / INSERT / DELETE execution
                 {
                     const item = await request.json() as SQLStatement;
-                    const res = await env.prod.prepare(item.sql).bind(item.params).run();
+                    const res = await env.prod.prepare(item.sql).bind(...item.params).run();
 
                     console.log("Update Result: " + JSON.stringify(res));
 
@@ -61,9 +70,7 @@ export default {
                 {
                     const payload = await request.json() as SQLStatement[];
                     const statements: D1PreparedStatement[] = [];
-                    payload.forEach(payloadItem => {
-                        statements.push(env.prod.prepare(payloadItem.sql).bind(payloadItem.params));
-                    });
+                    payload.forEach(payloadItem => statements.push(env.prod.prepare(payloadItem.sql).bind(...payloadItem.params)));
                     const res = await env.prod.batch(statements);
 
                     console.log("Batch Result: " + JSON.stringify(res));
@@ -92,6 +99,15 @@ export default {
                     }
                 }
                 break;
+            case "/db/search":
+                // Specialzed endpoint for dealing with pfp bytes
+                {
+                    const query = await request.text();
+                    const res = await env.prod
+                        .prepare("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.id AS uid, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")
+                        .bind(query).run();
+                    return new Response(JSON.stringify(res.results));
+                }
         }
         return res(404);
 	}

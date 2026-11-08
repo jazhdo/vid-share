@@ -8,7 +8,6 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,7 +21,7 @@ public class SecurityConfig {
     @Bean 
     public SecurityFilterChain securityFilterChain(HttpSecurity security) {
         return security
-            .csrf(AbstractHttpConfigurer::disable)
+            .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(request -> request.anyRequest().access((auth, context) -> {
                 assert context != null;
                 HttpServletRequest servletRequest = context.getRequest();
@@ -30,8 +29,8 @@ public class SecurityConfig {
                 return new AuthorizationDecision(true);
             }))
             .exceptionHandling(exception -> exception.accessDeniedHandler((HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) -> response.sendRedirect("https://video.itsjaz.com")))
-            .formLogin(AbstractHttpConfigurer::disable)
-            .httpBasic(AbstractHttpConfigurer::disable)
+            .formLogin(login -> login.disable())
+            .httpBasic(http -> http.disable())
             .build();
     }
 }

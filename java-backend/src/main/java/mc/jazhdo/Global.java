@@ -1,7 +1,6 @@
 package mc.jazhdo;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,7 +32,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @SuppressWarnings("CallToPrintStackTrace")
 @Component 
 public class Global {
-    public static final Path root = Paths.get(""),dbPath = root.resolve(getEnvOrElse("DB_PATH", "database.db")), videoPath = root.resolve(getEnvOrElse("VIDEO_PATH", "videos"));
+    public static final Path root = Paths.get(""), dbPath = root.resolve(getEnvOrElse("DB_PATH", "database.db")), videoPath = root.resolve(getEnvOrElse("VIDEO_PATH", "videos"));
     public static final byte[] defaultProfilePic;
     public static final Logger log = LoggerFactory.getLogger(VidShareApplication.class);
     private static final ClassLoader classLoader = VidShareApplication.class.getClassLoader();
@@ -134,7 +133,7 @@ public class Global {
     public static String getCookieValue(String key, Cookie[] cookies) {
         // Null check
         if (cookies == null) return null;
-        return Arrays.stream(cookies).filter(cookie -> cookie.getName().equals(key)).findFirst().map(Cookie::getValue).orElse(null);
+        return Arrays.stream(cookies).filter(cookie -> cookie.getName().equals(key)).findFirst().map(cookie -> cookie.getValue()).orElse(null);
     }
 
     // TODO: Combine these two :)

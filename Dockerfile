@@ -2,7 +2,7 @@ FROM sourcemation/jdk-25
 
 WORKDIR /
 
-COPY . /
+COPY ./java-backend /
 
 RUN sh mvnw clean package
 

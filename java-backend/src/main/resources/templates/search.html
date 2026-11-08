@@ -19,9 +19,9 @@
 .result:hover {
     cursor: pointer;
 }
-.result:active {
+/* .result:active {
 
-}
+} */
 .top {
     display: flex;
     flex-direction: column;
@@ -51,7 +51,7 @@
             <p th:text="*{description}">Video Description</p>
             <div class="author">
                 <div class="pfp">
-                    <img th:src="|/api/pfp/user/*{pfp}|">
+                    <img th:src="|/api/pfp/user/*{uid}|">
                 </div>
                 <p th:text="*{author}">John Doe</p>
             </div>

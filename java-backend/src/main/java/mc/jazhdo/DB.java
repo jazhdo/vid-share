@@ -26,10 +26,10 @@ public class DB {
     // Helper functions to perform queries on the cloudflare d1 database (Documentation at https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/)
 
     // PreparedStatement execution
-    public static JSONObject execute(String statement) throws SQLException {
+    public static JSONArray execute(String statement) throws SQLException {
         return execute(new SQLStatement(statement));
     }
-    public static JSONObject execute(SQLStatement statement) throws SQLException {
+    public static JSONArray execute(SQLStatement statement) throws SQLException {
         JSONObject body = new JSONObject();
         body.put("sql", statement.sql());
         body.put("params", statement.params());
@@ -38,7 +38,7 @@ public class DB {
 
         log.info("Request returned the following string:\n" + res.body());
         
-        return new JSONObject(res.body());
+        return new JSONArray(res.body());
     }
     public static JSONObject execute(SQLStatement... statements) throws SQLException {
         JSONArray batch = new JSONArray();
@@ -55,6 +55,21 @@ public class DB {
 
         return new JSONObject(res.body());
     }
+    
+    // PrepareStatement execution but only for the first element
+    public static JSONObject executeFirst(SQLStatement statement) throws SQLException {
+        JSONObject body = new JSONObject();
+        body.put("sql", statement.sql());
+        body.put("params", statement.params());
+
+        HttpResponse<String> res = post("db/first", BodyPublishers.ofString(body.toString()), BodyHandlers.ofString(), "Content-Type", "application/json");
+
+        String result = res.body();
+
+        log.info("First request returned the following string:\n" + result);
+
+        return result == null ? null : new JSONObject(result);
+    }
 
     // Updates
     public static int executeUpdate(String statement) throws SQLException {
@@ -69,7 +84,7 @@ public class DB {
 
         log.info("Request returned the following string:\n" + res.body());
         
-        return new JSONArray(res.body()).length();
+        return Integer.parseInt(res.body());
     }
 
     // Raw statement execution

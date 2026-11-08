@@ -2,14 +2,13 @@ package mc.jazhdo;
 
 import java.io.IOException;
 import java.net.http.HttpRequest.BodyPublishers;
-import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.sql.SQLException;
+import java.util.Base64;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.MimeType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,6 +38,7 @@ public class ProfilePicAPI {
     }
 
     public ResponseEntity<byte[]> getDefaultProfilePic() {
+        Global.log.info("Returning default pfp: " + Base64.getEncoder().encodeToString(Global.defaultProfilePic));
         return ResponseEntity.ok().body(Global.defaultProfilePic);
     }
     @GetMapping(produces = {"image/webp", "image/png"})
@@ -66,7 +66,7 @@ public class ProfilePicAPI {
 
             // Update database
             try {
-                int res = Integer.parseInt(DB.post("UPDATE users SET pfp = ? WHERE id = ?", MultipartBodyPublisher.newBuilder()
+                int res = Integer.parseInt(DB.post("db/pfp", MultipartBodyPublisher.newBuilder()
                     .formPart("pfp", userid + ".webp", BodyPublishers.ofByteArray(pfp), MediaType.of("image", "webp"))
                     .formPart("id", BodyPublishers.ofString(userid)).build(), BodyHandlers.ofString()
                 ).body());

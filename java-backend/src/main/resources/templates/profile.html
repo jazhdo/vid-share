@@ -194,7 +194,7 @@ h1 {
 <div id="content">
     <div id="upper">
         <div id="pfp" th:data-uid="${uid}">
-            <img th:src="|/api/${pfp}|">
+            <img th:src="|/api/pfp/${pfp}|">
             <span>Click to change</span>
         </div>
         <div id="names">
@@ -228,7 +228,7 @@ uploadPFPInputElement.onchange = async () => {
     console.log("Uploading PFP: " + uploadPFPInputElement.value.substring(12));
     const file = uploadPFPInputElement.files[0], bytes = await file.bytes();
     PFPImgElement.setAttribute("src", "data:" + file.type + ";base64," + bytes.toBase64());
-    await fetch("/api/pfp/user/" + PFPElement.getAttribute("data-uid"), {
+    await fetch("/api/pfp/" + PFPElement.getAttribute("data-uid"), {
         method: "POST",
         headers: {
             "Content-Type": "image/" + uploadPFPInputElement.files

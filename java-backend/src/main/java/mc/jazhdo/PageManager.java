@@ -1,15 +1,17 @@
 package mc.jazhdo;
 
 import java.io.IOException;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -28,6 +30,7 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import jakarta.servlet.http.HttpServletRequest;
+import mc.jazhdo.DB.SQLStatement;
 
 @SuppressWarnings("CallToPrintStackTrace")
 @RequestMapping("")
@@ -79,10 +82,13 @@ public class PageManager {
         model.addAttribute("pfp", uid != null ? uid : "default");
 
         Context context = new Context();
-        try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT * FROM videos ORDER BY rowid DESC LIMIT 50")) {
-            ResultSet result = ps.executeQuery();
+        try {
+            JSONArray results = DB.execute("SELECT thumbnail, title, description, timestamp, id FROM videos ORDER BY rowid DESC LIMIT 50");
             List<HomepageVideo> videos = new ArrayList<>();
-            while (result.next()) videos.add(new HomepageVideo(result.getString("thumbnail"), result.getString("title"), result.getString("description"), "Uploaded " + formatTimestamp(result.getLong("timestamp")), "/watch?v=" + result.getString("id")));
+            for (int i = 0; i < results.length(); i++) {
+                JSONObject result = results.getJSONObject(i);
+                videos.add(new HomepageVideo(result.getString("thumbnail"), result.getString("title"), result.getString("description"), "Uploaded " + formatTimestamp(result.getLong("timestamp")), "/watch?v=" + result.getString("id")));
+            }
             context.setVariable("videos", videos);
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -103,13 +109,12 @@ public class PageManager {
                 String query = request.getParameter("q");
                 if (query != null) {
                     List<SearchResult> searchResults = new ArrayList<>();
-                    try (PreparedStatement ps = Global.getDB().prepareStatement(
-                        "SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.pfp, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC"
-                        )
-                    ) {
-                        ps.setString(1, query);
-                        ResultSet results = ps.executeQuery();
-                        while (results.next()) searchResults.add(new SearchResult("/watch?v=" + results.getString("id"), results.getString("thumbnail"), results.getString("title"), results.getString("description"), results.getBytes("pfp"), results.getString("displayname"), results.getInt("views"), results.getInt("likes"), 0, formatTimestamp(results.getLong("timestamp"))));
+                    try {
+                        JSONArray results = new JSONArray(DB.query("db/search", BodyPublishers.ofString(query), BodyHandlers.ofString()).body());
+                        for (int i = 0; i < results.length(); i++) {
+                            JSONObject result = results.getJSONObject(i);
+                            searchResults.add(new SearchResult("/watch?v=" + result.getString("id"), result.getString("thumbnail"), result.getString("title"), result.getString("description"), result.getString("uid"), result.getString("displayname"), result.getInt("views"), result.getInt("likes"), 0, formatTimestamp(result.getLong("timestamp"))));
+                        }
                     } catch (SQLException ex) {
                         ex.printStackTrace();
                         log.warn("Search Error: {}", ex.getMessage());
@@ -137,10 +142,10 @@ public class PageManager {
                     // Get user info
                     String displayName = "Error", username = "Error", bio = "Error fetching bio";
                     long timestamp = System.currentTimeMillis();
-                    try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT username, displayname, bio, timestamp FROM users WHERE id = ?")) {
-                        ps.setString(1, uid);
-                        ResultSet result = ps.executeQuery();
-                        if (result.next()) {
+                    try {
+                        JSONArray results = DB.execute(new SQLStatement("SELECT username, displayname, bio, timestamp FROM users WHERE id = ?", uid));
+                        if (!results.isEmpty()) {
+                            JSONObject result = results.getJSONObject(0);
                             displayName = result.getString("displayname");
                             username = result.getString("username");
                             bio = result.getString("bio");
@@ -160,7 +165,7 @@ public class PageManager {
             default -> getErrorPage(HttpStatus.NOT_FOUND, model);
         };
     }
-    public record SearchResult(String link, String thumbnail, String title, String description, byte[] pfp, String author, int views, int likes, int comments, String date) {};
+    public record SearchResult(String link, String thumbnail, String title, String description, String uid, String author, int views, int likes, int comments, String date) {};
     public record SearchData(String query, boolean empty) {};
 
     // Resource pages

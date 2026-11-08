@@ -52,7 +52,7 @@ public class GeneralAPI {
     @ResponseBody 
     public ResponseEntity<String> verifyLogin(@RequestBody AuthRequest authRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
-            JSONObject result = DB.execute(new SQLStatement("SELECT id, password FROM users WHERE username = ?", authRequest.username()));
+            JSONObject result = DB.execute(new SQLStatement("SELECT id, password FROM users WHERE username = ?", authRequest.username())).getJSONObject(0);
             String id = result.getString("id");
             if (encoder.matches(authRequest.password(), result.getString("password"))) {
                 Cookie tokenCookie = new Cookie("token", Jwts.builder().subject(id).issuedAt(new Date()).expiration(Date.from(new Date().toInstant().plus(Duration.ofHours(24)))).signWith(global.jwtKey).compact());
@@ -82,7 +82,7 @@ public class GeneralAPI {
             String uid = Global.newID();
             int rows = DB.executeUpdate(new SQLStatement(
                 "INSERT INTO users (id, pfp, username, password, displayname, bio, followers) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                uid, null, signupRequest.username(), encoder.encode(signupRequest.password()), uppercaseFirst(signupRequest.username()), "Hello, I'm a new user!", 0
+                uid, JSONObject.NULL, signupRequest.username(), encoder.encode(signupRequest.password()), uppercaseFirst(signupRequest.username()), "Hello, I'm a new user!", 0
             ));
             if (rows == 0) return res(HttpStatus.UNAUTHORIZED);
             else {

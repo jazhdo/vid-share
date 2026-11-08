@@ -2,8 +2,6 @@ package mc.jazhdo;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DateFormat;
 import java.util.ArrayList;
@@ -11,6 +9,8 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
+import mc.jazhdo.DB.SQLStatement;
 import mc.jazhdo.PageManager.HomepageVideo;
 
 @SuppressWarnings("CallToPrintStackTrace")
@@ -43,10 +44,9 @@ public class VideoAPI {
     // Video endpoints
     @GetMapping(path = "/show/{video}", produces = "video/mp4")
     public ResponseEntity<byte[]> getVideo(@PathVariable String video) {
-        try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT * FROM videos WHERE id = ?")) {
-            ps.setString(1, video);
-            ResultSet result = ps.executeQuery();
-            if (result.next()) {
+        try {
+            JSONObject res = DB.executeFirst(new SQLStatement("SELECT id FROM videos WHERE id = ?", video));
+            if (res != null) {
                 try {
                     return ResponseEntity.ok().body(Files.readAllBytes(Global.videoPath.resolve(video)));
                 } catch (IOException ex) {
@@ -61,10 +61,11 @@ public class VideoAPI {
     }
     @GetMapping(path = "/homepage", produces = "application/json")
     public ResponseEntity<List<HomepageVideo>> getHomepageVideos(HttpServletRequest request) {
-        try (PreparedStatement ps = Global.getDB().prepareStatement("SELECT * FROM videos ORDER BY rowid DESC LIMIT 50")) {
-            ResultSet result = ps.executeQuery();
+        try {
+            JSONArray res = DB.execute(new SQLStatement("SELECT thumbnail, title, description, timestamp, id FROM videos ORDER BY rowid DESC LIMIT 50"));
             List<HomepageVideo> videos = new ArrayList<>();
-            while (result.next())
+            for (int i = 0; i < res.length(); i++) {
+                JSONObject result = res.getJSONObject(i);
                 videos.add(
                     new HomepageVideo(
                         result.getString("thumbnail"),
@@ -74,6 +75,7 @@ public class VideoAPI {
                         "/video/" + result.getString("id")
                     )
                 );
+            }
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(videos);
         } catch (SQLException ex) {
             ex.printStackTrace();
@@ -104,17 +106,12 @@ public class VideoAPI {
             }
 
             // Update database
-            try (PreparedStatement ps = Global.getDB().prepareStatement("INSERT INTO videos (id, uid, thumbnail, title, description, views, likes, comments, shares) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
-                ps.setString(1, id);
-                ps.setString(2, Global.getCookieValue("uid", request.getCookies()));
-                ps.setString(3, thumbnailString);
-                ps.setString(4, title);
-                ps.setString(5, description);
-                ps.setInt(6, 0);
-                ps.setInt(7, 0);
-                ps.setInt(8, 0);
-                ps.setInt(9, 0);
-                if (ps.executeUpdate() == 0) return ResponseEntity.status(500).body(id);
+            try {
+                int updated = DB.executeUpdate(new SQLStatement(
+                    "INSERT INTO videos (id, uid, thumbnail, title, description, views, likes, comments, shares) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    id, Global.getCookieValue("uid", request.getCookies()), thumbnailString, title, description, 0, 0, 0, 0
+                ));
+                if (updated == 0) return ResponseEntity.status(500).body(id);
                 else return ResponseEntity.ok().body(id);
             } catch (SQLException ex) {
                 ex.printStackTrace();
