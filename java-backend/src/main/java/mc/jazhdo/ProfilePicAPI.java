@@ -66,10 +66,10 @@ public class ProfilePicAPI {
 
             // Update database
             try {
-                int res = Integer.parseInt(DB.post("db/pfp", MultipartBodyPublisher.newBuilder()
+                MultipartBodyPublisher body = MultipartBodyPublisher.newBuilder()
                     .formPart("pfp", userid + ".webp", BodyPublishers.ofByteArray(pfp), MediaType.of("image", "webp"))
-                    .formPart("id", BodyPublishers.ofString(userid)).build(), BodyHandlers.ofString()
-                ).body());
+                    .formPart("id", BodyPublishers.ofString(userid)).build();
+                int res = Integer.parseInt(DB.req("db/pfp", (builder) -> builder.POST(body).setHeader("Content-Type", body.mediaType().toString()), BodyHandlers.ofString()).body());
                 if (res == 0) return res(HttpStatus.INTERNAL_SERVER_ERROR);
                 return ResponseEntity.ok().build();
             } catch (SQLException ex) {

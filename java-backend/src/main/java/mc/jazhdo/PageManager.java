@@ -137,7 +137,7 @@ public class PageManager {
             case "profile" -> {
                 if (global.checkAuth(request)) {
                     Context context = new Context();
-                    context.setVariable("pfp", uid == null ? "default" : "user/" + uid);
+                    context.setVariable("pfp", uid);
 
                     // Get user info
                     String displayName = "Error", username = "Error", bio = "Error fetching bio";

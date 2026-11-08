@@ -107,9 +107,9 @@ public class DB {
     public static <T> HttpResponse<T> req(String path, Function<Builder, Builder> method, BodyHandler<T> handler, String... headers) throws SQLException {
         HttpRequest req;
         try {
-            req = method.apply(HttpRequest.newBuilder(new URI(CLOUDFLARE_WORKER_API + path))
-                .timeout(Duration.ofSeconds(30))
-                .headers(headers)).build();
+            Builder temp = method.apply(HttpRequest.newBuilder(new URI(CLOUDFLARE_WORKER_API + path))).timeout(Duration.ofSeconds(30));
+            if (headers.length > 1) temp.headers(headers);
+            req = temp.build();
         } catch (URISyntaxException ex) {
             throw new SQLException();
         }

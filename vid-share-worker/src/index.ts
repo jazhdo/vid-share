@@ -92,10 +92,17 @@ export default {
                 {
                     if (request.method === "POST") {
                         const payload = await request.formData();
-                        const res = await env.prod.prepare("UPDATE users SET pfp = ? WHERE id = ?").bind(payload.get("pfp") as File, payload.get("id") as string).run();
+                        const res = await env.prod.prepare("UPDATE users SET pfp = ? WHERE id = ?").bind(await (payload.get("pfp") as File).arrayBuffer(), payload.get("id") as string).run();
+
+                        console.log("PFP Post Result: " + res.meta.changes.toString());
+
                         return new Response(res.meta.changes.toString());
                     } else if (request.method === "QUERY") {
-                        return new Response(await env.prod.prepare("SELECT pfp FROM users WHERE id = ?").bind(await request.text()).first<ArrayBuffer>());
+                        const result = (await env.prod.prepare("SELECT pfp FROM users WHERE id = ?").bind(await request.text()).first() as {pfp: ArrayBuffer}).pfp;
+
+                        console.log("PFP Query Result: " + result);
+
+                        return new Response(result);
                     }
                 }
                 break;

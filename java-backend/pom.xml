@@ -71,12 +71,19 @@
         <dependency>
             <groupId>com.sksamuel.scrimage</groupId>
             <artifactId>scrimage-core</artifactId>
-            <version>4.6.8</version>
+            <version>4.6.11</version>
         </dependency>
         <dependency>
             <groupId>com.sksamuel.scrimage</groupId>
             <artifactId>scrimage-webp</artifactId>
-            <version>4.6.8</version>
+            <version>4.6.11</version>
+        </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/com.sksamuel.scrimage/scrimage-formats-extra -->
+        <dependency>
+            <groupId>com.sksamuel.scrimage</groupId>
+            <artifactId>scrimage-formats-extra</artifactId>
+            <version>4.6.11</version>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- FFMPEG for video stuff (idk yet as of the time of writing this) -->
@@ -121,7 +128,7 @@
                     <addResources>true</addResources>
                 </configuration>
 			</plugin>
-            <!-- <plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.6.2</version>
@@ -138,7 +145,7 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin> -->
+            </plugin>
 		</plugins>
 	</build>
 </project>
