@@ -24,9 +24,15 @@
 	 */
     "d1_databases": [
         {
-        "binding": "prod",
-        "database_name": "vid-share",
-        "database_id": "0939b37d-a9dd-4224-bc2e-84241893e70d"
+            "binding": "prod",
+            "database_name": "vid-share",
+            "database_id": "0939b37d-a9dd-4224-bc2e-84241893e70d"
+        }
+    ],
+    "r2_buckets": [
+        {
+            "binding": "vid",
+            "bucket_name": "videos"
         }
     ]
 	/**

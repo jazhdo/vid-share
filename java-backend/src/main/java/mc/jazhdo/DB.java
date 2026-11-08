@@ -13,6 +13,7 @@ import java.net.http.HttpResponse.BodyHandler;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.function.Function;
 
 import org.json.JSONArray;
@@ -39,6 +40,9 @@ public class DB {
         log.info("Request returned the following string:\n" + res.body());
         
         return new JSONArray(res.body());
+    }
+    public static JSONObject execute(String... statements) throws SQLException {
+        return execute(Arrays.stream(statements).map((statement) -> new SQLStatement(statement)).toArray(SQLStatement[]::new));
     }
     public static JSONObject execute(SQLStatement... statements) throws SQLException {
         JSONArray batch = new JSONArray();

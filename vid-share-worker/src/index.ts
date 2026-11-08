@@ -20,9 +20,99 @@ function res(status: number): Response {
     return res;
 }
 
+function getPath(path: string) {
+    return path.substring(1).split("/").reduce((previousValue: unknown, currentValue: string) => {
+        if (previousValue && typeof previousValue === "object") return (previousValue as Record<string, unknown>)[currentValue];
+        return undefined;
+    }, paths);
+}
+
 type SQLStatement = {
     sql: string,
     params: string[]
+}
+
+const paths: Record<string, unknown> = {
+    "db": {
+        // Like a single SQL preparedStatement execution
+        "prepare": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+            const item = await request.json<SQLStatement>();
+            const res = await env.prod.prepare(item.sql).bind(...item.params).run();
+
+            console.log("Result: " + JSON.stringify(res));
+
+            return new Response(JSON.stringify(res.results));
+        },
+        // Like a single SQL preparedStatement execution but only getting the first element
+        "first": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+            const item = await request.json<SQLStatement>();
+            const res = await env.prod.prepare(item.sql).bind(...item.params).first();
+
+            console.log("First Result: " + JSON.stringify(res?.results));
+
+            return new Response(res === null ? null : JSON.stringify(res));
+        },
+        // Like a SQL preparedStatement UPDATE / INSERT / DELETE execution
+        "update": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+            const item = await request.json<SQLStatement>();
+            const res = await env.prod.prepare(item.sql).bind(...item.params).run();
+
+            console.log("Update Result: " + JSON.stringify(res));
+
+            return new Response(JSON.stringify(res.meta.changes));
+        },
+        // Like a mass SQL preparedStatement execution
+        "batch": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+            const result = JSON.stringify(await env.prod.batch((await request.json<SQLStatement[]>()).map(payloadItem => env.prod.prepare(payloadItem.sql).bind(...payloadItem.params))));
+
+            console.log("Batch Result: " + result);
+
+            return new Response(result);
+        },
+        // Like a SQL update but without any parameters
+        "exec": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+            const result = await env.prod.exec(await request.text());
+            
+            console.log("Exec Result: " + JSON.stringify(result));
+
+            return new Response(JSON.stringify(result.count));
+        },
+        // Specialized endpoint for dealing with the bytes
+        "pfp": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+            if (request.method === "POST") {
+                const payload = await request.formData();
+                const result = (await env.prod.prepare("UPDATE users SET pfp = ? WHERE id = ?").bind(await (payload.get("pfp") as File).arrayBuffer(), payload.get("id") as string).run()).meta.changes.toString();
+
+                console.log("PFP Post Result: " + result);
+
+                return new Response(result);
+            } else if (request.method === "QUERY") {
+                const result = (await env.prod.prepare("SELECT pfp FROM users WHERE id = ?").bind(await request.text()).first() as {pfp: ArrayBuffer})?.pfp || null;
+
+                console.log("PFP Query Result: " + result);
+
+                return new Response(result);
+            }
+        },
+        // Specialzed endpoint for dealing with pfp bytes
+        "search": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+            const results = (await env.prod
+                .prepare("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.id AS uid, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")
+                .bind(await request.text()).run())?.results;
+
+            console.log("Search Results: " + JSON.stringify(results));
+
+            return new Response(results === undefined ? null : JSON.stringify(results));
+        }
+    },
+    "vid": {
+        "upload": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+
+        },
+        "download": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+
+        }
+    }
 }
 
 export default {
@@ -34,88 +124,9 @@ export default {
         if (!pathname.startsWith("/api/")) return res(404);
         else pathname = pathname.substring(4);
         
-        switch (pathname) {
-            case "/db/prepare":
-                // Like a single SQL preparedStatement execution
-                {
-                    const item = await request.json() as SQLStatement;
-                    const res = await env.prod.prepare(item.sql).bind(...item.params).run();
+        const pathLogic = getPath(pathname) as Function | undefined;
+        if (pathLogic === undefined) return res(404);
 
-                    console.log("Result: " + JSON.stringify(res));
-
-                    return new Response(JSON.stringify(res.results));
-                }
-            case "/db/first":
-                // Like a single SQL preparedStatement execution but only getting the first element
-                {
-                    const item = await request.json() as SQLStatement;
-                    const res = await env.prod.prepare(item.sql).bind(...item.params).first();
-
-                    console.log("First Result: " + JSON.stringify(res?.results));
-
-                    return new Response(res === null ? null : JSON.stringify(res));
-                }
-            case "/db/update":
-                // Like a SQL preparedStatement UPDATE / INSERT / DELETE execution
-                {
-                    const item = await request.json() as SQLStatement;
-                    const res = await env.prod.prepare(item.sql).bind(...item.params).run();
-
-                    console.log("Update Result: " + JSON.stringify(res));
-
-                    return new Response(JSON.stringify(res.meta.changes));
-                }
-            case "/db/batch":
-                // Like a mass SQL preparedStatement execution
-                {
-                    const payload = await request.json() as SQLStatement[];
-                    const statements: D1PreparedStatement[] = [];
-                    payload.forEach(payloadItem => statements.push(env.prod.prepare(payloadItem.sql).bind(...payloadItem.params)));
-                    const res = await env.prod.batch(statements);
-
-                    console.log("Batch Result: " + JSON.stringify(res));
-
-                    return new Response(JSON.stringify(res));
-                }
-            case "/db/exec":
-                // Like a SQL update but without any parameters
-                {
-                    const statement = await request.text();
-                    const res = await env.prod.exec(statement);
-                    
-                    console.log("Exec Result: " + JSON.stringify(res));
-
-                    return new Response(JSON.stringify(res.count));
-                }
-            case "/db/pfp":
-                // Specialized endpoint for dealing with the bytes
-                {
-                    if (request.method === "POST") {
-                        const payload = await request.formData();
-                        const res = await env.prod.prepare("UPDATE users SET pfp = ? WHERE id = ?").bind(await (payload.get("pfp") as File).arrayBuffer(), payload.get("id") as string).run();
-
-                        console.log("PFP Post Result: " + res.meta.changes.toString());
-
-                        return new Response(res.meta.changes.toString());
-                    } else if (request.method === "QUERY") {
-                        const result = (await env.prod.prepare("SELECT pfp FROM users WHERE id = ?").bind(await request.text()).first() as {pfp: ArrayBuffer}).pfp;
-
-                        console.log("PFP Query Result: " + result);
-
-                        return new Response(result);
-                    }
-                }
-                break;
-            case "/db/search":
-                // Specialzed endpoint for dealing with pfp bytes
-                {
-                    const query = await request.text();
-                    const res = await env.prod
-                        .prepare("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.id AS uid, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")
-                        .bind(query).run();
-                    return new Response(JSON.stringify(res.results));
-                }
-        }
-        return res(404);
+        return pathLogic();
 	}
 } satisfies ExportedHandler<Env>;
