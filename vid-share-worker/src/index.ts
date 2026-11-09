@@ -79,7 +79,7 @@ const paths: Record<string, unknown> = {
         },
         // Specialized endpoint for dealing with the bytes
         "pfp": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
-            if (request.method === "POST") {
+            if (request.method === "PUT") {
                 const payload = await request.formData();
                 const pfp = await (payload.get("pfp") as File).arrayBuffer();
                 const id = payload.get("id") as string;
@@ -91,7 +91,11 @@ const paths: Record<string, unknown> = {
 
                 console.log("PFP Query Result: " + result);
 
-                return new Response(result);
+                return new Response(new Uint8Array(result), {
+                    headers: {
+                        "Content-Type": "image/webp"
+                    }
+                });
             }
         },
         // Specialzed endpoint for dealing with pfp bytes

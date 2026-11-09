@@ -1,11 +1,14 @@
 package mc.jazhdo;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.sql.SQLException;
 import java.util.Base64;
+import java.util.HexFormat;
 
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -41,8 +44,7 @@ public class ProfilePicAPI {
     @ResponseBody
     public ResponseEntity<byte[]> getProfilePic(@PathVariable String userid) {
         try {
-            byte[] pfpBytes = DB.query("db/pfp", BodyPublishers.ofString(userid), BodyHandlers.ofByteArray(),  "Content-Type", "text/plain").body();
-            Global.log.info("PFP Bytes: " + Base64.getEncoder().encodeToString(pfpBytes));
+            byte[] pfpBytes = DB.query("db/pfp", BodyPublishers.ofString(userid), BodyHandlers.ofByteArray(),  "Content-Type", "text/plain", "Accept", "image/webp").body();
             if (pfpBytes == null || pfpBytes.length == 0) return ResponseEntity.ok().body(Global.defaultProfilePic);
             else return ResponseEntity.ok().body(pfpBytes);
         } catch (SQLException ex) {
@@ -67,7 +69,7 @@ public class ProfilePicAPI {
                 MultipartBodyPublisher body = MultipartBodyPublisher.newBuilder()
                     .formPart("pfp", userid + ".webp", BodyPublishers.ofByteArray(pfp), MediaType.of("image", "webp"))
                     .formPart("id", BodyPublishers.ofString(userid)).build();
-                int res = Integer.parseInt(DB.req("db/pfp", (builder) -> builder.POST(body).setHeader("Content-Type", body.mediaType().toString()), BodyHandlers.ofString()).body());
+                int res = Integer.parseInt(DB.req("db/pfp", (builder) -> builder.PUT(body).setHeader("Content-Type", body.mediaType().toString()), BodyHandlers.ofString()).body());
                 if (res == 0) return res(HttpStatus.INTERNAL_SERVER_ERROR);
                 return ResponseEntity.ok().build();
             } catch (SQLException ex) {

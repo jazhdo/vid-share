@@ -125,10 +125,18 @@ public class DB {
         HttpResponse<T> res;
         try {
             res = HttpClient.newBuilder().build().send(req, handler);
-        } catch (IOException | InterruptedException ex)  {
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            ex.printStackTrace();
+            throw new SQLException();
+        } catch (IOException ex)  {
             ex.printStackTrace();
             throw new SQLException();
         }
+
+        log.info("Response status: " + res.statusCode());
+        log.info("Response headers: " + res.headers().map());
+        log.info("Response version: " + res.version());
 
         return res;
     }
