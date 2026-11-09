@@ -23,7 +23,7 @@ import org.slf4j.Logger;
 @SuppressWarnings("CallToPrintStackTrace")
 public class DB {
     private static final Logger log = Global.log;
-    private static final String CLOUDFLARE_WORKER_API = "http://localhost:8787/api/";
+    private static final String CLOUDFLARE_WORKER_API = System.getenv("CLOUDFLARE_WORKER_API");
     
     // Helper functions to perform queries on the cloudflare d1 database (Documentation at https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/query/)
 

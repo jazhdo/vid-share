@@ -3,6 +3,7 @@
 ## Required Environment Variables
 
 - JWT_KEY: A key for use in JSON web tokens, use a cryptographically secure string of UTF-8 that has to be at least 32 bytes (Basic alphanumeric characters and simple symbols are all 1 byte each)
+- CLOUDFLARE_WORKER_API: The API url for the internal API
 
 ## Optional Environment Variables
 
