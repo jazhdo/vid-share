@@ -55,7 +55,7 @@ So far only tested on firefox, might not work on other browsers.
 3. Done! Its not really a game, more of just a tool
 
 ## Screenshots of it working
-TODO: TO be added
+![Screenshot of the homepage](/homepage-screeny.png)
 
 ## Biggest Updates for Week 3
 - Storage now saves! (Previously on render hosting the databases were wiped on every new startup)

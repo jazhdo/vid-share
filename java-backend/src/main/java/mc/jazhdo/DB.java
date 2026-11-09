@@ -134,10 +134,6 @@ public class DB {
             throw new SQLException();
         }
 
-        log.info("Response status: " + res.statusCode());
-        log.info("Response headers: " + res.headers().map());
-        log.info("Response version: " + res.version());
-
         return res;
     }
 
