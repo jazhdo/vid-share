@@ -52,28 +52,27 @@ public class PageManager {
         return input.substring(0, 1).toUpperCase() + input.substring(1);
     }
     private String getPage(String pageName, Model model, Context pageContent) {
-        String fileContents = templateEngine.process(pageName + ".html", pageContent);
-        Page page = new Page(uppercaseFirst(pageName), fileContents);
-        model.addAttribute("page", page);
+        model.addAttribute("page", new Page(uppercaseFirst(pageName), templateEngine.process(pageName + ".html", pageContent)));
         return "main";
     }
     public record Page(String name, String content) {};
     private String getErrorPage(HttpStatus status, Model model) {
-        Context context = new Context();
-        context.setVariable("header", "Error " + Integer.toString(status.value()) + " " + switch (status) {
+        Context pageContext = new Context();
+        String header = "Error " + Integer.toString(status.value()) + " " + switch (status) {
             case HttpStatus.BAD_REQUEST -> "Bad Request";
             case HttpStatus.NOT_FOUND -> "Not Found";
             case HttpStatus.MISDIRECTED_REQUEST -> "Misdirected Request";
             case HttpStatus.INTERNAL_SERVER_ERROR -> "Internal Server Error";
             default -> "Unknown Error";
-        });
-        return getPage("error", model, context);
+        };
+        pageContext.setVariable("header", header);
+        return getPage("error", model, pageContext);
     }
     private String formatTimestamp(long timestamp) {
         return DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG).format(new Date(timestamp));
     }
 
-    // Paths
+    // Homepage
     @GetMapping(path = "/", produces = "text/html")
     public String getHome(Model model, HttpServletRequest request) {
         // Profile pic logic
@@ -83,11 +82,14 @@ public class PageManager {
 
         Context context = new Context();
         try {
-            JSONArray results = DB.execute("SELECT thumbnail, title, description, timestamp, id FROM videos ORDER BY rowid DESC LIMIT 50");
+            JSONArray results = DB.execute("SELECT v.id, v.thumbnail, v.title, v.description, v.timestamp, u.id AS uid, u.displayname FROM videos v JOIN users u ON v.uid = u.id ORDER BY v.rowid DESC LIMIT 50");
             List<HomepageVideo> videos = new ArrayList<>();
             for (int i = 0; i < results.length(); i++) {
                 JSONObject result = results.getJSONObject(i);
-                videos.add(new HomepageVideo(result.getString("thumbnail"), result.getString("title"), result.getString("description"), "Uploaded " + formatTimestamp(result.getLong("timestamp")), "/watch?v=" + result.getString("id")));
+                videos.add(new HomepageVideo(
+                    "/watch?v=" + result.getString("id"), result.getString("thumbnail"), result.getString("title"), result.getString("description"),
+                    "Uploaded " + formatTimestamp(result.getLong("timestamp")), result.getString("uid"), result.getString("displayname")
+                ));
             }
             context.setVariable("videos", videos);
         } catch (SQLException ex) {
@@ -96,7 +98,9 @@ public class PageManager {
         }
         return getPage("home", model, context);
     }
-    public record HomepageVideo(String thumbnail, String title, String description, String date, String link) {}
+    public record HomepageVideo(String link, String thumbnail, String title, String description, String date, String uid, String displayname) {}
+
+    // All other pages
     @GetMapping(path = "/{page}", produces = "text/html")
     public String getNormalPage(@PathVariable String page, Model model, HttpServletRequest request) {
         // Profile pic logic
@@ -113,7 +117,10 @@ public class PageManager {
                         JSONArray results = new JSONArray(DB.query("db/search", BodyPublishers.ofString(query), BodyHandlers.ofString()).body());
                         for (int i = 0; i < results.length(); i++) {
                             JSONObject result = results.getJSONObject(i);
-                            searchResults.add(new SearchResult("/watch?v=" + result.getString("id"), result.getString("thumbnail"), result.getString("title"), result.getString("description"), result.getString("uid"), result.getString("displayname"), result.getInt("views"), result.getInt("likes"), 0, formatTimestamp(result.getLong("timestamp"))));
+                            searchResults.add(new SearchResult(
+                                "/watch?v=" + result.getString("id"), result.getString("thumbnail"), result.getString("title"), result.getString("description"), result.getString("uid"),
+                                result.getString("displayname"), result.getInt("views"), result.getInt("likes"), 0, formatTimestamp(result.getLong("timestamp"))
+                            ));
                         }
                     } catch (SQLException ex) {
                         ex.printStackTrace();
@@ -126,13 +133,17 @@ public class PageManager {
                     yield getPage("search", model, context);
                 } else yield getErrorPage(HttpStatus.BAD_REQUEST, model);
             }
-            case "make", "login" -> getPage(page, model, new Context());
+            case "login" -> getPage(page, model, new Context());
             case "watch" -> {
                 Context context = new Context();
                 String videoID = request.getParameter("v");
                 log.info("Watching video: {}", videoID);
                 context.setVariable("id", videoID);
                 yield getPage("watch", model, context);
+            }
+            case "make" -> {
+                if (global.checkAuth(request)) yield getPage(page, model, new Context());
+                else yield getPage("login", model, new Context());
             }
             case "profile" -> {
                 if (global.checkAuth(request)) {

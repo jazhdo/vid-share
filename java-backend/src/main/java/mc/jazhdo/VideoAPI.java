@@ -1,18 +1,13 @@
 package mc.jazhdo;
 
 import java.io.IOException;
-import java.nio.file.Files;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.sql.SQLException;
-import java.text.DateFormat;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Date;
-import java.util.List;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,7 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.servlet.http.HttpServletRequest;
 import mc.jazhdo.DB.SQLStatement;
-import mc.jazhdo.PageManager.HomepageVideo;
 
 @SuppressWarnings("CallToPrintStackTrace")
 @RequestMapping("/api/video")
@@ -48,8 +42,8 @@ public class VideoAPI {
             JSONObject res = DB.executeFirst(new SQLStatement("SELECT id FROM videos WHERE id = ?", video));
             if (res != null) {
                 try {
-                    return ResponseEntity.ok().body(Files.readAllBytes(Global.videoPath.resolve(video)));
-                } catch (IOException ex) {
+                    return ResponseEntity.ok().body(DB.get("vid", BodyHandlers.ofByteArray(), "File-Id", video).body());
+                } catch (SQLException ex) {
                     ex.printStackTrace();
                     return res(HttpStatus.INTERNAL_SERVER_ERROR);
                 }
@@ -59,41 +53,18 @@ public class VideoAPI {
             return res(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
-    @GetMapping(path = "/homepage", produces = "application/json")
-    public ResponseEntity<List<HomepageVideo>> getHomepageVideos(HttpServletRequest request) {
-        try {
-            JSONArray res = DB.execute(new SQLStatement("SELECT thumbnail, title, description, timestamp, id FROM videos ORDER BY rowid DESC LIMIT 50"));
-            List<HomepageVideo> videos = new ArrayList<>();
-            for (int i = 0; i < res.length(); i++) {
-                JSONObject result = res.getJSONObject(i);
-                videos.add(
-                    new HomepageVideo(
-                        result.getString("thumbnail"),
-                        result.getString("title"),
-                        result.getString("description"),
-                        DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG).format(new Date(result.getLong("timestamp"))),
-                        "/video/" + result.getString("id")
-                    )
-                );
-            }
-            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(videos);
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            return res(HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
     @PostMapping(path = "/new", produces = "text/plain")
-    public ResponseEntity<String> uploadVideo(@RequestParam  MultipartFile file, @RequestParam MultipartFile thumbnail, @RequestParam String title, @RequestParam String description, HttpServletRequest request) {
+    public ResponseEntity<String> uploadVideo(@RequestParam MultipartFile file, @RequestParam MultipartFile thumbnail, @RequestParam String title, @RequestParam String description, HttpServletRequest request) {
         if (global.checkAuth(request)) {
             if (file == null || file.isEmpty() || thumbnail == null || thumbnail.isEmpty() || title == null || title.isEmpty() || description == null || description.isEmpty()) return ResponseEntity.status(400).body("empty");
 
             // Copy video into place
             String id = Global.newID();
             try {
-                file.transferTo(Global.videoPath.resolve(id));
-            } catch (IOException | IllegalStateException ex) {
+                DB.post("vid", BodyPublishers.ofByteArray(file.getBytes()), BodyHandlers.ofString(), "Content-Type", file.getContentType(), "File-Id", id);
+            } catch (SQLException | IOException ex) {
                 ex.printStackTrace();
-                return ResponseEntity.status(500).body(id);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(id);
             }
 
             // Get thumbnail
@@ -102,7 +73,7 @@ public class VideoAPI {
                 thumbnailString = "data:" + thumbnail.getContentType() + ";base64," + Base64.getEncoder().encodeToString(thumbnail.getBytes());
             } catch (IOException ex) {
                 ex.printStackTrace();
-                return ResponseEntity.status(500).body(id);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(id);
             }
 
             // Update database
@@ -115,9 +86,8 @@ public class VideoAPI {
                 else return ResponseEntity.ok().body(id);
             } catch (SQLException ex) {
                 ex.printStackTrace();
-                return ResponseEntity.status(500).body(id);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(id);
             }
         } else return res(HttpStatus.UNAUTHORIZED);
     }
-    public record VideoUpload(String fileMime, String file, String thumbnailMime, String thumbnail, String title, String description) {}
 }

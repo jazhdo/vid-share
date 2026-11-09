@@ -37,19 +37,17 @@ public class ProfilePicAPI {
         return Global.res(status);
     }
 
-    public ResponseEntity<byte[]> getDefaultProfilePic() {
-        Global.log.info("Returning default pfp: " + Base64.getEncoder().encodeToString(Global.defaultProfilePic));
-        return ResponseEntity.ok().body(Global.defaultProfilePic);
-    }
     @GetMapping(produces = {"image/webp", "image/png"})
     @ResponseBody
     public ResponseEntity<byte[]> getProfilePic(@PathVariable String userid) {
         try {
             byte[] pfpBytes = DB.query("db/pfp", BodyPublishers.ofString(userid), BodyHandlers.ofByteArray(),  "Content-Type", "text/plain").body();
-            if (pfpBytes == null || pfpBytes.length == 0) return getDefaultProfilePic();
+            Global.log.info("PFP Bytes: " + Base64.getEncoder().encodeToString(pfpBytes));
+            if (pfpBytes == null || pfpBytes.length == 0) return ResponseEntity.ok().body(Global.defaultProfilePic);
             else return ResponseEntity.ok().body(pfpBytes);
-        } catch (SQLException e) {
-            return getDefaultProfilePic();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            return ResponseEntity.ok().body(Global.defaultProfilePic);
         }
     }
     @PostMapping

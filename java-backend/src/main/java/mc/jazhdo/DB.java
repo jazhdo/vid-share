@@ -20,6 +20,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 
+@SuppressWarnings("CallToPrintStackTrace")
 public class DB {
     private static final Logger log = Global.log;
     private static final String CLOUDFLARE_WORKER_API = "http://localhost:8787/api/";
@@ -41,10 +42,10 @@ public class DB {
         
         return new JSONArray(res.body());
     }
-    public static JSONObject execute(String... statements) throws SQLException {
+    public static JSONArray execute(String... statements) throws SQLException {
         return execute(Arrays.stream(statements).map((statement) -> new SQLStatement(statement)).toArray(SQLStatement[]::new));
     }
-    public static JSONObject execute(SQLStatement... statements) throws SQLException {
+    public static JSONArray execute(SQLStatement... statements) throws SQLException {
         JSONArray batch = new JSONArray();
         for (SQLStatement statement : statements) {
             JSONObject item = new JSONObject();
@@ -57,7 +58,7 @@ public class DB {
 
         log.info("Batch request returned the following string:\n" + res.body());
 
-        return new JSONObject(res.body());
+        return new JSONArray(res.body());
     }
     
     // PrepareStatement execution but only for the first element
@@ -99,6 +100,8 @@ public class DB {
 
         return Integer.parseInt(res.body());
     }
+
+    // Just requests and their method shortcuts
     public static <T> HttpResponse<T> post(String path, BodyPublisher body, BodyHandler<T> handler, String... headers) throws SQLException {
         return req(path, (builder) -> builder.POST(body), handler, headers);
     }
@@ -115,6 +118,7 @@ public class DB {
             if (headers.length > 1) temp.headers(headers);
             req = temp.build();
         } catch (URISyntaxException ex) {
+            ex.printStackTrace();
             throw new SQLException();
         }
 
@@ -122,10 +126,12 @@ public class DB {
         try {
             res = HttpClient.newBuilder().build().send(req, handler);
         } catch (IOException | InterruptedException ex)  {
+            ex.printStackTrace();
             throw new SQLException();
         }
 
         return res;
     }
+
     public static record SQLStatement(String sql, Object... params) {}
 }

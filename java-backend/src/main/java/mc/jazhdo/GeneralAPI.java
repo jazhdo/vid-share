@@ -48,9 +48,9 @@ public class GeneralAPI {
     }
 
     // Auth endpoints
-    @PostMapping(path = "/login", produces = "application/json")
+    @PostMapping(path = "/login")
     @ResponseBody 
-    public ResponseEntity<String> verifyLogin(@RequestBody AuthRequest authRequest, HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<Void> verifyLogin(@RequestBody AuthRequest authRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
             JSONObject result = DB.execute(new SQLStatement("SELECT id, password FROM users WHERE username = ?", authRequest.username())).getJSONObject(0);
             String id = result.getString("id");
@@ -75,7 +75,7 @@ public class GeneralAPI {
         }
     }
     public record AuthRequest(String username, String password) {}
-    @PostMapping(path = "/signup", produces = "application/json")
+    @PostMapping(path = "/signup")
     @ResponseBody 
     public ResponseEntity<Void> createLogin(@RequestBody SignupRequest signupRequest, HttpServletRequest request, HttpServletResponse response) {
         try {
@@ -104,6 +104,10 @@ public class GeneralAPI {
         }
     }
     public record SignupRequest(String username, String password) {}
+    @PostMapping(path = "/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request) {
+        return ResponseEntity.ok().header("Clear-Site-Data", "\"cookies\"").build();
+    }
 
     // Set Bio & Display Name endpoints
     @PostMapping(path = "/bio-display/{userid}")

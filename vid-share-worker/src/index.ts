@@ -20,11 +20,11 @@ function res(status: number): Response {
     return res;
 }
 
-function getPath(path: string) {
+function getPath(path: string): Function | undefined {
     return path.substring(1).split("/").reduce((previousValue: unknown, currentValue: string) => {
         if (previousValue && typeof previousValue === "object") return (previousValue as Record<string, unknown>)[currentValue];
         return undefined;
-    }, paths);
+    }, paths) as Function | undefined;
 }
 
 type SQLStatement = {
@@ -81,11 +81,11 @@ const paths: Record<string, unknown> = {
         "pfp": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
             if (request.method === "POST") {
                 const payload = await request.formData();
-                const result = (await env.prod.prepare("UPDATE users SET pfp = ? WHERE id = ?").bind(await (payload.get("pfp") as File).arrayBuffer(), payload.get("id") as string).run()).meta.changes.toString();
+                const pfp = await (payload.get("pfp") as File).arrayBuffer();
+                const id = payload.get("id") as string;
+                const result = (await env.prod.prepare("UPDATE users SET pfp = ? WHERE id = ?").bind(pfp, id).run());
 
-                console.log("PFP Post Result: " + result);
-
-                return new Response(result);
+                return new Response(result.meta.changes.toString());
             } else if (request.method === "QUERY") {
                 const result = (await env.prod.prepare("SELECT pfp FROM users WHERE id = ?").bind(await request.text()).first() as {pfp: ArrayBuffer})?.pfp || null;
 
@@ -105,13 +105,39 @@ const paths: Record<string, unknown> = {
             return new Response(results === undefined ? null : JSON.stringify(results));
         }
     },
-    "vid": {
-        "upload": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+    "vid": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+        if (request.method === "POST") {
+            // Get and validate headers
+            const contentType = request.headers.get("Content-Type"), fileName = request.headers.get("File-Id"), body = request.body;
+            if (contentType === null || fileName === null || body === null) return res(400);
 
-        },
-        "download": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
+            try {
+                const result = await env.vid.put(fileName, body, {
+                    httpMetadata: {
+                        contentType: contentType
+                    }
+                });
+            } catch (error: any) {
+                if (error instanceof Error) console.error(error.message);
+                else console.error(JSON.stringify(error));
+                return res(500);
+            }
 
-        }
+            return res(201);
+        } else if (request.method === "GET") {
+            const fileName = request.headers.get("File-Id");
+            if (fileName === null) return res(400);
+
+            const file = await env.vid.get(fileName);
+            if (file === null) return res(404);
+
+            return new Response(await file.arrayBuffer());
+        } else return new Response(null, {
+            status: 405,
+            headers: {
+                "Allow": "GET, POST"
+            }
+        });
     }
 }
 
@@ -124,9 +150,9 @@ export default {
         if (!pathname.startsWith("/api/")) return res(404);
         else pathname = pathname.substring(4);
         
-        const pathLogic = getPath(pathname) as Function | undefined;
+        const pathLogic = getPath(pathname);
         if (pathLogic === undefined) return res(404);
-
-        return pathLogic();
+        
+        return pathLogic(request, env);
 	}
 } satisfies ExportedHandler<Env>;

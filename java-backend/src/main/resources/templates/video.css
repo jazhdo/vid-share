@@ -1,0 +1,52 @@
+.thumbnail {
+    border-radius: 20px;
+    width: 480px;
+    height: 360px;
+    flex-shrink: 0;
+}
+.thumbnail:hover {
+    cursor: pointer;
+}
+.thumbnail img {
+    width: 480px;
+    height: 360px;
+
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+
+.author {
+    display: flex;
+    align-items: center;
+
+    padding: 10px;
+    padding-right: 34px;
+
+    background-color: hsl(0, 0%, 90%);
+    border-radius: 100px;
+
+    width: fit-content;
+}
+.author img {
+    width: 50px;
+    height: 50px;
+
+    margin-left: 2px;
+    
+    border-radius: 100px;
+    border: solid hsla(0, 0%, 70%) 4px;
+
+    user-select: none;
+    -ms-user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+.author p {
+    font-size: 19px;
+    font-weight: 500;
+
+    padding: 0px;
+    margin-left: 15px;
+}

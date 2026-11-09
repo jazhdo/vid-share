@@ -138,24 +138,16 @@ public class Global {
         return Arrays.stream(cookies).filter(cookie -> cookie.getName().equals(key)).findFirst().map(cookie -> cookie.getValue()).orElse(null);
     }
 
-    // TODO: Combine these two :)
     public boolean checkAuth(HttpServletRequest request) {
-        // Check for the existence of the header
-        Cookie[] cookies = request.getCookies();
-        String UID = getCookieValue("uid", cookies), token = getCookieValue("token", cookies);
-        if (UID == null || token == null) return false;
-
-        // Get token payload
-        Claims payload;
-        try {
-            payload = Jwts.parser().verifyWith(jwtKey).build().parseSignedClaims(token).getPayload();
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
-
-        // Check that the token is for this user and return true for right auth
-        return payload.getSubject().equals(UID);
+        return checkAuth(request, null);
     }
+    /**
+     * Checks the auth state of a request
+     * 
+     * @param request The request to check for
+     * @param verifyUID The UID to check (or null to not check)
+     * @return Whether or not the request is logged in
+     */
     public boolean checkAuth(HttpServletRequest request, String verifyUID) {
         // Check for the existence of the header
         Cookie[] cookies = request.getCookies();
@@ -171,7 +163,7 @@ public class Global {
         }
 
         // Check that the token is for this user and return true for right auth
-        return verifyUID.equals(UID) && payload.getSubject().equals(UID);
+        return (verifyUID == null || verifyUID.equals(UID)) && payload.getSubject().equals(UID);
     }
 
     // Gemini generated id generator
