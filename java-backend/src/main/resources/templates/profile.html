@@ -13,6 +13,7 @@ h1 {
     padding: 20px;
     width: fit-content;
     padding-right: 130px;
+    margin-bottom: 20px;
 }
 #upper {
     display: flex;
@@ -210,7 +211,7 @@ h2 {
         </div>
         <div id="names">
             <input th:value="${display}" th:data-original-display="${display}" maxlength="50" required>
-            <p th:text="${username}">@Jazhdo</p>
+            <p th:text="|@${username}|">@Jazhdo</p>
         </div>
     </div>
     <h2>Bio</h2>
@@ -218,6 +219,7 @@ h2 {
     <p id="saved-status"></p>
     <button id="save-button" class="button" onclick="save();">Save Bio & Display Name</button>
 </div>
+<button th:data-username="${username}" onclick="window.location.href = '/@' + this.getAttribute('data-username')" class="button" style="width: 129px;">Homepage</button>
 <h2>Risky Settings</h2>
 <button onclick="logout();" class="button danger-button" style="width: 120px;">Log Out</button>
 <div id="upload-pfp-background" style="display: none;">

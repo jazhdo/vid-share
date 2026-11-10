@@ -32,22 +32,15 @@ h1 {
 <h1>Home</h1>
 <div id="videos">
     <div class="video" th:each="video : ${videos}" th:object="${video}">
-        <img class="thumbnail" th:src="|*{thumbnail}|" th:data-link="*{link}"></img>
+        <img class="thumbnail" th:src="|*{thumbnail}|" th:data-link="*{link}" onclick="window.location.href = this.getAttribute('data-link')"></img>
         <div class="lower">
             <h2 class="title" th:text="*{title}"></h2>
             <p class="description" th:text="*{description}">Description here</p>
-            <div class="author">
+            <div class="author" th:data-username="*{username}" onclick="window.location.href = '/@' + this.getAttribute('data-username')">
                 <img th:src="|/api/pfp/*{uid}|">
                 <p th:text="|@*{displayname}|"></p>
             </div>
             <p class="date" th:text="*{date}"></p>
         </div>
     </div>
-    <script>
-        const videos = document.querySelectorAll(".video img");
-        videos.forEach(video => video.addEventListener("click", () => redirect(video.getAttribute("data-link"))));
-        function redirect(link) {
-            window.location.href = window.location.protocol + "//" + window.location.host + link;
-        }
-    </script>
 </div>

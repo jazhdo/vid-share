@@ -58,7 +58,7 @@ public class ProfilePicAPI {
             // Change the pfp file into .webp format
             byte[] pfp;
             try {
-                pfp = ImmutableImage.loader().fromStream(request.getInputStream()).bytes(WebpWriter.MAX_LOSSLESS_COMPRESSION);
+                pfp = ImmutableImage.loader().fromStream(request.getInputStream()).scaleTo(512, 512).bytes(WebpWriter.MAX_LOSSLESS_COMPRESSION);
             } catch (IOException ex) {
                 ex.printStackTrace();
                 return res(HttpStatus.INTERNAL_SERVER_ERROR);

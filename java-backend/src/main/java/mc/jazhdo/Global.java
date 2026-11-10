@@ -95,25 +95,19 @@ public class Global {
 
                 // Video tables
                 "CREATE TABLE IF NOT EXISTS videos (id TEXT NOT NULL UNIQUE, uid TEXT NOT NULL, thumbnail TEXT NOT NULL, title TEXT NOT NULL COLLATE NOCASE, description TEXT NOT NULL COLLATE NOCASE, views INTEGER NOT NULL, likes INTEGER NOT NULL, comments INTEGER NOT NULL, shares INTEGER NOT NULL, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))",
-                "CREATE VIRTUAL TABLE IF NOT EXISTS videos_search USING fts5(title, description)",
                 "CREATE TABLE IF NOT EXISTS views (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))",
                 "CREATE TABLE IF NOT EXISTS likes (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))",
                 "CREATE TABLE IF NOT EXISTS comments (id TEXT NOT NULL UNIQUE, uid TEXT NOT NULL, likes INTEGER NOT NULL, video TEXT NOT NULL COLLATE NOCASE, parent TEXT COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)), PRIMARY KEY(id))",
                 "CREATE TABLE IF NOT EXISTS shares (uid TEXT NOT NULL, video TEXT NOT NULL COLLATE NOCASE, timestamp INTEGER NOT NULL DEFAULT (CAST(unixepoch('subsec') * 1000 AS INTEGER)))",
-                "DELETE FROM videos_search"
+
+                // Search
+                "CREATE VIRTUAL TABLE IF NOT EXISTS videos_search USING fts5(title, description, tokenize='porter unicode61')",
+                "DELETE FROM videos_search",
+                "INSERT INTO videos_search(rowid, title, description) SELECT rowid, title, description FROM videos"
             );
         } catch (SQLException ex) {
             ex.printStackTrace();
             log.error("Creating the database tables failed. Error: {}", ex.getMessage());
-            return;
-        }
-
-        // Populate search index
-        try {
-            DB.executeUpdate("INSERT INTO videos_search(rowid, title, description) SELECT rowid, title, description FROM videos");
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            log.error("Populating the video search index table failed. Error: {}", ex.getMessage());
         }
     }
     private String getSafeEnvironmentVar(String name) {

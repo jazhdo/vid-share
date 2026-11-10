@@ -1,0 +1,79 @@
+<!-- <div>
+    Future banner maybe
+    <img>
+</div> -->
+<style>
+#author {
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+    gap: 30px;
+}
+#basic {
+    display: flex;
+
+    background-color: hsl(0, 0%, 88%);
+    border-radius: 40px;
+    padding: 20px;
+}
+#basic img {
+    width: 150px;
+    height: 150px;
+    border-radius: 100px;
+    border: solid hsl(0, 0%, 70%) 9px;
+    user-select: none;
+}
+#names {
+    margin-left: 40px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+}
+#names h1, #names h2 {
+    margin: 0px;
+    padding: 0px;
+}
+#other {
+    display: flex;
+    flex-direction: column;
+}
+#bio {
+    background-color: hsl(0, 0%, 83%);
+    padding: 20px;
+    border-radius: 30px;
+    margin: 0px;
+    gap: 20px;
+    display: flex;
+    flex-direction: column;
+}
+#bio h2, #bio p {
+    margin: 0px;
+}
+</style>
+<link rel="stylesheet" href="/css/video">
+<div id="author">
+    <div id="basic">
+        <img th:src="|/api/pfp/${uid}|">
+        <div id="names">
+            <h1 th:text="${displayname}">Jazhdo</h1>
+            <h2 th:text="|@${username}|">@Jazhdo</h2>
+        </div>
+    </div>
+    <div id="other">
+        <div id="bio">
+            <h2>Bio</h2>
+            <p th:text="${bio}">This is my bio</p>
+        </div>
+        <p id="join" th:text="|Joined ${join}.|">Joined 10/20/2026</p>
+    </div>
+</div>
+<div id="videos">
+    <div class="video" th:each="video : ${videos}" th:object="${video}">
+        <img class="thumbnail" th:src="|*{thumbnail}|" th:onclick="|window.location.href = *{link}|"></img>
+        <div class="lower">
+            <h2 class="title" th:text="*{title}"></h2>
+            <p class="description" th:text="*{description}">Description here</p>
+            <p class="date" th:text="*{date}"></p>
+        </div>
+    </div>
+</div>

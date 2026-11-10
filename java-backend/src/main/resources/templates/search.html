@@ -34,15 +34,15 @@
 <h1 id="header" th:text="|Search Results for '${search.query}'|">Search Results for </h1>
 <div id="results">
     <!-- Repeat this for each result -->
-    <div class="result" th:each="result : ${results}" th:object="${result}" th:data-link="*{link}">
-        <img class="thumbnail" th:src="|${result.thumbnail}|" onclick="window.location.href = this.getAttribute('data-link');">
+    <div class="result" th:each="result : ${results}" th:object="${result}">
+        <img class="thumbnail" th:src="|${result.thumbnail}|" th:data-link="*{link}" onclick="window.location.href = this.getAttribute('data-link')">
         <div style="display: flex; flex-direction: column; margin: 0px 40px; justify-content: space-between; width: 100%">
             <div class="top">
                 <h2 th:text="*{title}">Video Title</h2>
                 <p th:text="*{description}">Video Description</p>
-                <div class="author">
+                <div class="author" th:data-username="*{username}" onclick="window.location.href = '/@' + this.getAttribute('data-username')">
                     <img th:src="|/api/pfp/*{uid}|">
-                    <p th:text="|@*{author}|">John Doe</p>
+                    <p th:text="|@*{displayname}|">John Doe</p>
                 </div>
             </div>
             <div class="bottom">

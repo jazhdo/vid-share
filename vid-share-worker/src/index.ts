@@ -101,7 +101,7 @@ const paths: Record<string, unknown> = {
         // Specialzed endpoint for dealing with pfp bytes
         "search": async (request: Request<unknown, IncomingRequestCfProperties<unknown>>, env: Env) => {
             const results = (await env.prod
-                .prepare("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.id AS uid, u.displayname FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")
+                .prepare("SELECT v.id, v.thumbnail, v.title, v.description, v.views, v.likes, v.shares, v.timestamp, u.id AS uid, u.displayname, u.username FROM videos v JOIN videos_search s ON v.rowid = s.rowid JOIN users u ON v.uid = u.id WHERE videos_search MATCH ? ORDER BY s.rank ASC")
                 .bind(await request.text()).run())?.results;
 
             console.log("Search Results: " + JSON.stringify(results));

@@ -61,7 +61,7 @@ public class DB {
         return new JSONArray(res.body());
     }
     
-    // PrepareStatement execution but only for the first element
+    // PrepareStatement execution but only for the first elemente
     public static JSONObject executeFirst(SQLStatement statement) throws SQLException {
         JSONObject body = new JSONObject();
         body.put("sql", statement.sql());

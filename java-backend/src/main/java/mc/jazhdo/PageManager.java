@@ -69,7 +69,7 @@ public class PageManager {
         return getPage("error", model, pageContext);
     }
     private String formatTimestamp(long timestamp) {
-        return DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG).format(new Date(timestamp));
+        return DateFormat.getDateInstance(DateFormat.SHORT).format(new Date(timestamp));
     }
 
     // Homepage
@@ -82,13 +82,13 @@ public class PageManager {
 
         Context context = new Context();
         try {
-            JSONArray results = DB.execute("SELECT v.id, v.thumbnail, v.title, v.description, v.timestamp, u.id AS uid, u.displayname FROM videos v JOIN users u ON v.uid = u.id ORDER BY v.rowid DESC LIMIT 50");
+            JSONArray results = DB.execute("SELECT v.id, v.thumbnail, v.title, v.description, v.timestamp, u.id AS uid, u.displayname, u.username FROM videos v JOIN users u ON v.uid = u.id ORDER BY v.rowid DESC LIMIT 50");
             List<HomepageVideo> videos = new ArrayList<>();
             for (int i = 0; i < results.length(); i++) {
                 JSONObject result = results.getJSONObject(i);
                 videos.add(new HomepageVideo(
                     "/watch?v=" + result.getString("id"), result.getString("thumbnail"), result.getString("title"), result.getString("description"),
-                    "Uploaded " + formatTimestamp(result.getLong("timestamp")), result.getString("uid"), result.getString("displayname")
+                    "Uploaded " + formatTimestamp(result.getLong("timestamp")), result.getString("uid"), result.getString("displayname"), result.getString("username")
                 ));
             }
             context.setVariable("videos", videos);
@@ -98,7 +98,7 @@ public class PageManager {
         }
         return getPage("home", model, context);
     }
-    public record HomepageVideo(String link, String thumbnail, String title, String description, String date, String uid, String displayname) {}
+    public record HomepageVideo(String link, String thumbnail, String title, String description, String date, String uid, String displayname, String username) {}
 
     // All other pages
     @GetMapping(path = "/{page}", produces = "text/html")
@@ -111,6 +111,7 @@ public class PageManager {
         return switch (page) {
             case "search" -> {
                 String query = request.getParameter("q");
+
                 if (query != null) {
                     List<SearchResult> searchResults = new ArrayList<>();
                     try {
@@ -119,7 +120,7 @@ public class PageManager {
                             JSONObject result = results.getJSONObject(i);
                             searchResults.add(new SearchResult(
                                 "/watch?v=" + result.getString("id"), result.getString("thumbnail"), result.getString("title"), result.getString("description"), result.getString("uid"),
-                                result.getString("displayname"), result.getInt("views"), result.getInt("likes"), 0, formatTimestamp(result.getLong("timestamp"))
+                                result.getString("displayname"), result.getString("username"), result.getInt("views"), result.getInt("likes"), 0, formatTimestamp(result.getLong("timestamp"))
                             ));
                         }
                     } catch (SQLException ex) {
@@ -166,17 +167,36 @@ public class PageManager {
                         ex.printStackTrace();
                     }
                     context.setVariable("display", displayName);
-                    context.setVariable("username", "@" + username);
+                    context.setVariable("username", username);
                     context.setVariable("bio", bio);
                     context.setVariable("timestamp", formatTimestamp(timestamp));
                     context.setVariable("uid", uid);
                     yield getPage("profile", model, context);
                 } else yield getPage("login", model, new Context());
             }
-            default -> getErrorPage(HttpStatus.NOT_FOUND, model);
+            default -> {
+                if (page.startsWith("@")) {
+                    Context ctx = new Context();
+
+                    try {
+                        JSONObject result = DB.executeFirst(new SQLStatement("SELECT id, displayname, bio, timestamp FROM users WHERE username = ?", page.substring(1)));
+                        if (result != null) {
+                            ctx.setVariable("uid", result.getString("id"));
+                            ctx.setVariable("username", page.substring(1));
+                            ctx.setVariable("displayname", result.getString("displayname"));
+                            ctx.setVariable("bio", result.getString("bio"));
+                            ctx.setVariable("join", formatTimestamp(result.getLong("timestamp")));
+                        } else yield getErrorPage(HttpStatus.NOT_FOUND, model);
+                    } catch (SQLException ex) {
+                    }
+
+                    // ctx.setVariable("user", )
+                    yield getPage("user", model, ctx);
+                } else yield getErrorPage(HttpStatus.NOT_FOUND, model);
+            }
         };
     }
-    public record SearchResult(String link, String thumbnail, String title, String description, String uid, String author, int views, int likes, int comments, String date) {};
+    public record SearchResult(String link, String thumbnail, String title, String description, String uid, String displayname, String username, int views, int likes, int comments, String date) {};
     public record SearchData(String query, boolean empty) {};
 
     // Resource pages
